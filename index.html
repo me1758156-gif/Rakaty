@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Rakah Tracker · متتبع الركعات</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0D1526">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rakah">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D1526;
+    --bg-2:#0A0F1D;
+    --panel:#16223B;
+    --panel-2:#1C2B4A;
+    --line: rgba(212,166,87,0.14);
+    --gold:#D4A657;
+    --gold-bright:#E8C377;
+    --teal:#4FA89B;
+    --terracotta:#C2685A;
+    --text:#F2EEE3;
+    --text-dim:#8C96AE;
+    --text-faint:#5C6580;
+    --shadow: 0 20px 60px rgba(0,0,0,0.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(212,166,87,0.08), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 90% 100%, rgba(79,168,155,0.06), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Manrope', sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:28px 16px 60px;
+  }
+  .app{
+    width:100%;
+    max-width:460px;
+  }
+  header{
+    text-align:center;
+    margin-bottom:22px;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--gold);
+    opacity:0.85;
+  }
+  h1{
+    font-family:'Amiri', serif;
+    font-weight:700;
+    font-size:30px;
+    margin:6px 0 4px;
+    color:var(--text);
+  }
+  h1 .ar{
+    font-size:24px;
+    color:var(--text-dim);
+    display:block;
+    margin-top:2px;
+    font-weight:400;
+  }
+  .sub{
+    font-size:13px;
+    color:var(--text-dim);
+    line-height:1.5;
+    max-width:340px;
+    margin:10px auto 0;
+  }
+
+  /* prayer selector */
+  .selector{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+    margin-bottom:22px;
+  }
+  .chip{
+    font-family:'Manrope';
+    font-size:13px;
+    font-weight:600;
+    padding:9px 16px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:all .18s ease;
+  }
+  .chip:hover{border-color:var(--gold); color:var(--text);}
+  .chip.active{
+    background:linear-gradient(135deg, var(--gold), #B9873F);
+    color:#1a1305;
+    border-color:transparent;
+    box-shadow:0 4px 14px rgba(212,166,87,0.25);
+  }
+  .custom-wrap{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:9px 14px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:var(--panel);
+  }
+  .custom-wrap input{
+    width:34px;
+    background:transparent;
+    border:none;
+    color:var(--text);
+    font-family:'JetBrains Mono';
+    font-size:13px;
+    text-align:center;
+    outline:none;
+  }
+  .custom-wrap label{font-size:13px; color:var(--text-dim); font-weight:600;}
+
+  /* mode switch */
+  .mode-switch{
+    display:flex;
+    gap:8px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:5px;
+    margin-bottom:18px;
+  }
+  .mode-chip{
+    flex:1;
+    text-align:center;
+    font-size:12px;
+    font-weight:700;
+    padding:10px 6px;
+    border-radius:10px;
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:all .18s ease;
+    line-height:1.3;
+  }
+  .mode-chip.active{
+    background:linear-gradient(135deg, var(--teal), #367f75);
+    color:#0b1f1c;
+  }
+
+  /* camera panel */
+  .camera-panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:18px;
+  }
+  .camera-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+    flex-wrap:wrap;
+  }
+  .camera-row:last-of-type{margin-bottom:10px;}
+  .cam-label{
+    font-size:12px;
+    color:var(--text-dim);
+    font-family:'JetBrains Mono';
+  }
+  .camera-panel select{
+    appearance:none;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:'Manrope';
+    font-size:12px;
+    border-radius:8px;
+    padding:8px 10px;
+  }
+  button.small{
+    padding:9px 12px;
+    font-size:12px;
+    flex:none;
+  }
+  .brightness-meter{
+    height:8px;
+    border-radius:99px;
+    background:var(--panel-2);
+    overflow:hidden;
+    margin-bottom:8px;
+  }
+  .brightness-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg, var(--teal), var(--gold));
+    transition:width .1s linear;
+  }
+  .cam-status{
+    font-size:12px;
+    color:var(--text-dim);
+    line-height:1.5;
+  }
+  .cam-status.dark{ color:var(--gold-bright); font-weight:600; }
+
+
+  /* the lantern / misbaha ring */
+  .ring-wrap{
+    position:relative;
+    width:100%;
+    max-width:340px;
+    margin:0 auto 22px;
+    aspect-ratio:1/1;
+  }
+  svg.ring{width:100%; height:100%; overflow:visible;}
+  .bead{
+    fill:var(--panel-2);
+    stroke:rgba(255,255,255,0.04);
+    stroke-width:1;
+    transition:fill .25s ease, r .25s ease;
+  }
+  .bead.filled{fill:var(--gold);}
+  .bead.marker{fill:var(--teal); }
+  .bead.marker.filled{fill:var(--teal);}
+  .bead.pulse{
+    animation:beadPulse .5s ease-out;
+  }
+  @keyframes beadPulse{
+    0%{ r:9; }
+    40%{ r:14; }
+    100%{ r:7.5; }
+  }
+  .center-plate{
+    position:absolute;
+    inset:15%;
+    border-radius:50%;
+    background: radial-gradient(circle at 50% 40%, var(--panel-2), var(--bg-2) 75%);
+    border:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+  }
+  .center-plate.listening{
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 0 0 0 rgba(212,166,87,0.4);
+    animation: breathe 2.6s ease-in-out infinite;
+  }
+  @keyframes breathe{
+    0%,100%{ box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 0 0 0 rgba(212,166,87,0.28); }
+    50%{ box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 0 0 14px rgba(212,166,87,0); }
+  }
+  .rakah-label{
+    font-family:'JetBrains Mono';
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    margin-bottom:2px;
+  }
+  .rakah-number{
+    font-family:'Amiri', serif;
+    font-weight:700;
+    font-size:64px;
+    line-height:1;
+    color:var(--gold-bright);
+  }
+  .rakah-arabic{
+    font-family:'Amiri', serif;
+    font-size:20px;
+    color:var(--text-dim);
+    margin-top:2px;
+  }
+  .rakah-of{
+    font-family:'JetBrains Mono';
+    font-size:12px;
+    color:var(--text-dim);
+    margin-top:8px;
+  }
+  .phase-label{
+    font-family:'Manrope';
+    font-weight:700;
+    font-size:13px;
+    color:var(--teal);
+    margin-top:10px;
+    padding:5px 12px;
+    border-radius:999px;
+    background:rgba(79,168,155,0.12);
+    border:1px solid rgba(79,168,155,0.3);
+    min-height:14px;
+    text-align:center;
+  }
+  .phase-label:empty{ display:none; }
+  .phase-label-ar{
+    font-family:'Amiri', serif;
+    font-size:13px;
+    color:var(--text-dim);
+    margin-top:5px;
+  }
+
+  /* status line */
+  .status{
+    text-align:center;
+    font-size:13px;
+    color:var(--text-dim);
+    min-height:18px;
+    margin-bottom:18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+  }
+  .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--text-faint);
+  }
+  .status.live .dot{
+    background:var(--teal);
+    box-shadow:0 0 8px var(--teal);
+    animation:blink 1.4s ease-in-out infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.35;}}
+
+  /* controls */
+  .controls{
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  button{
+    font-family:'Manrope';
+    font-weight:700;
+    font-size:14px;
+    border:none;
+    border-radius:14px;
+    padding:15px 12px;
+    cursor:pointer;
+    transition:transform .12s ease, opacity .12s ease;
+  }
+  button:active{transform:scale(0.97);}
+  .btn-main{
+    flex:1.4;
+    background:linear-gradient(135deg, var(--gold), #B9873F);
+    color:#1a1305;
+    box-shadow:0 6px 18px rgba(212,166,87,0.22);
+  }
+  .btn-main.stop{
+    background:linear-gradient(135deg, var(--terracotta), #8f4438);
+    color:#fbeee9;
+  }
+  .btn-secondary{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+  }
+  .btn-secondary:hover{border-color:var(--gold);}
+  .row2{
+    display:flex;
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .row2 button{flex:1; font-size:13px; padding:12px;}
+
+  /* log */
+  .log-panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    overflow:hidden;
+  }
+  .log-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 16px;
+    border-bottom:1px solid var(--line);
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    font-family:'JetBrains Mono';
+  }
+  .log-list{
+    max-height:180px;
+    overflow-y:auto;
+    padding:6px 0;
+  }
+  .log-item{
+    display:flex;
+    justify-content:space-between;
+    padding:8px 16px;
+    font-size:13px;
+    color:var(--text-dim);
+    border-bottom:1px solid rgba(255,255,255,0.03);
+  }
+  .log-item .n{
+    font-family:'JetBrains Mono';
+    color:var(--gold);
+    width:22px;
+  }
+  .log-item .r{color:var(--text); font-weight:600;}
+  .log-item .t{font-family:'JetBrains Mono'; color:var(--text-faint); font-size:12px;}
+  .log-empty{
+    padding:22px 16px;
+    text-align:center;
+    color:var(--text-faint);
+    font-size:13px;
+  }
+
+  footer{
+    margin-top:22px;
+    text-align:center;
+    font-size:12px;
+    line-height:1.6;
+    color:var(--text-faint);
+    padding:0 8px;
+  }
+  footer b{color:var(--text-dim);}
+
+  select#langSel{
+    appearance:none;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    font-family:'JetBrains Mono';
+    font-size:12px;
+    border-radius:8px;
+    padding:6px 10px;
+  }
+  .toprow{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin-top:10px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="eyebrow">Salah Companion</div>
+    <h1>Rakah Tracker<span class="ar">متتبع الركعات</span></h1>
+    <p class="sub">Tracks which rak'ah you're in by voice, camera, or a tap — so a stray thought never costs you your place.</p>
+    <div class="toprow">
+      <select id="langSel">
+        <option value="ar-SA">🎙 Arabic recognition (ar)</option>
+        <option value="en-US">🎙 English recognition (en)</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="selector" id="prayerSelector"></div>
+
+  <div class="mode-switch" id="modeSwitch">
+    <div class="mode-chip active" data-mode="takbir">🎙 Voice · Manual</div>
+    <div class="mode-chip" data-mode="sujud">📷 Camera · Sujud</div>
+    <div class="mode-chip" data-mode="motion">📱 Motion · Pocket</div>
+  </div>
+
+  <div class="camera-panel" id="cameraPanel" style="display:none;">
+    <div class="camera-row">
+      <button class="btn-secondary small" id="camEnableBtn">Enable Camera</button>
+      <select id="camFacing">
+        <option value="user">Front camera (phone screen‑up)</option>
+        <option value="environment">Back camera (phone screen‑down)</option>
+      </select>
+    </div>
+    <div class="camera-row">
+      <label class="cam-label">Sensitivity</label>
+      <select id="camSensitivity">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+      <button class="btn-secondary small" id="camRecalBtn">Recalibrate</button>
+    </div>
+    <div class="brightness-meter"><div class="brightness-fill" id="brightnessFill"></div></div>
+    <div class="cam-status" id="camStatus">Camera off · lay the phone screen‑up on your mat, then tap Enable Camera</div>
+    <video id="camVideo" autoplay playsinline muted style="display:none;"></video>
+    <canvas id="camCanvas" width="24" height="24" style="display:none;"></canvas>
+  </div>
+
+  <div class="camera-panel" id="motionPanel" style="display:none;">
+    <div class="camera-row">
+      <button class="btn-secondary small" id="motionEnableBtn">Enable Motion</button>
+      <button class="btn-secondary small" id="motionRecalBtn">Calibrate</button>
+    </div>
+    <div class="camera-row">
+      <label class="cam-label">Sensitivity</label>
+      <select id="motionSensitivity">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div class="brightness-meter"><div class="brightness-fill" id="tiltFill"></div></div>
+    <div class="cam-status" id="motionStatus">Motion off · pocket the phone upright, stand still, then tap Enable Motion</div>
+  </div>
+
+  <div class="ring-wrap">
+    <svg class="ring" id="beadRing" viewBox="0 0 340 340"></svg>
+    <div class="center-plate" id="centerPlate">
+      <div class="rakah-label">Rakah</div>
+      <div class="rakah-number" id="rakahNum">—</div>
+      <div class="rakah-arabic" id="rakahArabic">استعد</div>
+      <div class="rakah-of" id="rakahOf">Select a prayer</div>
+      <div class="phase-label" id="phaseLabel"></div>
+      <div class="phase-label-ar" id="phaseLabelAr"></div>
+    </div>
+  </div>
+
+  <div class="status" id="statusLine"><span class="dot"></span><span id="statusText">Tap "Start Listening" or count manually</span></div>
+
+  <div class="controls">
+    <button class="btn-main" id="listenBtn">Start Listening</button>
+    <button class="btn-secondary" id="tapBtn">+1 Takbir</button>
+  </div>
+  <div class="row2">
+    <button class="btn-secondary" id="undoBtn">Undo last</button>
+    <button class="btn-secondary" id="resetBtn">Reset</button>
+  </div>
+
+  <div class="log-panel">
+    <div class="log-head"><span id="logHeadLabel">Takbir Log</span><span id="logCount">0 heard</span></div>
+    <div class="log-list" id="logList">
+      <div class="log-empty">No takbirs counted yet</div>
+    </div>
+  </div>
+
+  <footer id="footNote">
+    Once installed, the counter, the bead ring, the rak'ah/position display and manual counting all work fully offline — no signal needed. Voice detection needs a connection (it runs through your phone's built‑in speech recognition, sending short audio snippets to your browser vendor's servers). <b>Camera detection runs entirely on your phone</b> — frames are analyzed locally for brightness only; nothing is recorded, saved, or sent anywhere. This tool follows the standard 5‑takbir‑per‑rakah structure (with an extra takbir wherever you sit for tashahhud) — some schools of thought and witr/nafl prayers differ slightly, so treat it as a memory aid, not a ruling.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const prayers = [
+    {id:'fajr', label:'Fajr', ar:'الفجر', rakahs:2},
+    {id:'dhuhr', label:'Dhuhr', ar:'الظهر', rakahs:4},
+    {id:'asr', label:'Asr', ar:'العصر', rakahs:4},
+    {id:'maghrib', label:'Maghrib', ar:'المغرب', rakahs:3},
+    {id:'isha', label:'Isha', ar:'العشاء', rakahs:4},
+  ];
+  const arabicIndic = ['۰','١','٢','٣','٤','٥','٦','٧','٨','٩','١٠','١١','١٢','١٣','١٤','١٥','١٦','١٧','١٨','١٩','٢٠'];
+  const rakahWordAr = {1:'الركعة الأولى',2:'الركعة الثانية',3:'الركعة الثالثة',4:'الركعة الرابعة',5:'الركعة الخامسة',6:'الركعة السادسة'};
+
+  let totalRakahs = null;
+  let takbirMap = [];
+  let phaseMap = [];
+  let takbirCount = 0;
+  let sujudMap = [];
+  let sujudCount = 0;
+  let mode = 'takbir'; // 'takbir' (voice/manual), 'sujud' (camera), or 'motion' (pocket)
+  let isListening = false;
+  let recognition = null;
+  let lastDetectTime = 0;
+  let logEntries = [];
+  let camActive = false;
+  let motionActive = false;
+
+  const selector = document.getElementById('prayerSelector');
+  const ring = document.getElementById('beadRing');
+  const centerPlate = document.getElementById('centerPlate');
+  const rakahNum = document.getElementById('rakahNum');
+  const rakahArabic = document.getElementById('rakahArabic');
+  const rakahOf = document.getElementById('rakahOf');
+  const phaseLabel = document.getElementById('phaseLabel');
+  const phaseLabelAr = document.getElementById('phaseLabelAr');
+  const statusLine = document.getElementById('statusLine');
+  const statusText = document.getElementById('statusText');
+  const listenBtn = document.getElementById('listenBtn');
+  const tapBtn = document.getElementById('tapBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const logList = document.getElementById('logList');
+  const logCount = document.getElementById('logCount');
+  const langSel = document.getElementById('langSel');
+
+  // ---- build prayer chips ----
+  prayers.forEach(p=>{
+    const chip = document.createElement('div');
+    chip.className='chip';
+    chip.textContent = p.label + ' · ' + p.ar;
+    chip.onclick = ()=>selectPrayer(p.rakahs, chip);
+    selector.appendChild(chip);
+  });
+  const customWrap = document.createElement('div');
+  customWrap.className='custom-wrap';
+  customWrap.innerHTML = '<label>Custom</label><input id="customInput" type="number" min="1" max="20" value="2">';
+  selector.appendChild(customWrap);
+  document.getElementById('customInput').addEventListener('change', (e)=>{
+    const n = Math.max(1, Math.min(20, parseInt(e.target.value)||2));
+    selectPrayer(n, customWrap);
+  });
+  customWrap.addEventListener('click', (e)=>{
+    if(e.target.tagName!=='INPUT'){
+      selectPrayer(parseInt(document.getElementById('customInput').value)||2, customWrap);
+    }
+  });
+
+  function selectPrayer(n, chipEl){
+    totalRakahs = n;
+    takbirMap = buildTakbirMap(n);
+    phaseMap = buildPhaseMap(n);
+    sujudMap = buildSujudMap(n);
+    takbirCount = 0;
+    sujudCount = 0;
+    logEntries = [];
+    [...selector.children].forEach(c=>c.classList.remove('active'));
+    chipEl.classList.add('active');
+    buildRing();
+    renderAll();
+  }
+
+  // ---- structure: every rak'ah has 5 takbirs on its own (Ihram/qiyam or
+  // rise-from-previous-sujud, then ruku, sujud1, rise1, sujud2). Whichever
+  // rak'ah is immediately followed by SITTING for tashahhud gets one extra
+  // "closing" takbir (rising into a sit needs its own takbir, rising straight
+  // into the next rak'ah's standing does not). That's always rak'ah 2 (the
+  // first tashahhud) and always the last rak'ah (the final tashahhud).
+  function buildTakbirMap(n){
+    const map = [];
+    for(let rak=1; rak<=n; rak++){
+      for(let i=0;i<5;i++) map.push(rak);
+      const followedBySit = (rak===2) || (rak===n);
+      if(followedBySit) map.push(rak);
+    }
+    return map;
+  }
+
+  // ---- simpler structure for camera mode: every rak'ah always has exactly
+  // 2 prostrations, no matter the prayer or the tashahhud — so counting dark
+  // dips is enough on its own to know the rak'ah.
+  function buildSujudMap(n){
+    const map = [];
+    for(let rak=1; rak<=n; rak++){ map.push(rak); map.push(rak); }
+    return map;
+  }
+
+  // ---- parallel array: what position you're in right after each takbir,
+  // so it's always clear whether you're headed to the 2nd Sujud, standing
+  // back up, or sitting for Tashahhud (that's a different sit than the
+  // short one between the two Sujud).
+  const PHASE_EN = ['Standing – reciting','Ruku','Sujud (1st)','Sitting between the two Sujud — next: 2nd Sujud','Sujud (2nd)'];
+  const PHASE_AR = ['قائم - القراءة','الركوع','السجدة الأولى','الجلسة بين السجدتين — بعدها: السجدة الثانية','السجدة الثانية'];
+  const PHASE_CLOSE_EN = 'Sitting for Tashahhud';
+  const PHASE_CLOSE_AR = 'الجلوس للتشهد';
+
+  function buildPhaseMap(n){
+    const phases = [];
+    for(let rak=1; rak<=n; rak++){
+      for(let i=0;i<5;i++) phases.push({en:PHASE_EN[i], ar:PHASE_AR[i]});
+      const followedBySit = (rak===2) || (rak===n);
+      if(followedBySit) phases.push({en:PHASE_CLOSE_EN, ar:PHASE_CLOSE_AR});
+    }
+    return phases;
+  }
+
+  // ---- generic helpers over whichever mode is active ----
+  function activeMap(){ return (mode==='sujud'||mode==='motion') ? sujudMap : takbirMap; }
+  function activeCount(){ return (mode==='sujud'||mode==='motion') ? sujudCount : takbirCount; }
+  function setActiveCount(v){ if(mode==='sujud'||mode==='motion'){ sujudCount=v; } else { takbirCount=v; } }
+  function unitLabel(){ return (mode==='sujud'||mode==='motion') ? 'Sujud' : 'Takbir'; }
+
+  function getRakah(count){
+    const map = activeMap();
+    if(count<=0) return 0;
+    const idx = Math.min(count, map.length);
+    return map[idx-1];
+  }
+
+  function getPhase(count){
+    if(mode==='sujud'){
+      if(count<=0) return null;
+      const within = ((count-1) % 2) + 1; // 1st or 2nd sujud detected this rak'ah
+      return within===1
+        ? {en:'1st Sujud detected', ar:'تم رصد السجدة الأولى'}
+        : {en:'2nd Sujud detected', ar:'تم رصد السجدة الثانية'};
+    }
+    if(count<=0) return null;
+    const idx = Math.min(count, phaseMap.length);
+    return phaseMap[idx-1];
+  }
+
+  // ---- bead ring ----
+  function buildRing(){
+    ring.innerHTML='';
+    const map = activeMap();
+    const total = map.length;
+    const cx=170, cy=170, r=150;
+    for(let i=0;i<total;i++){
+      const angle = (i/total)*Math.PI*2 - Math.PI/2;
+      const x = cx + r*Math.cos(angle);
+      const y = cy + r*Math.sin(angle);
+      const isBoundary = i===0 || (i>0 && map[i]!==map[i-1]);
+      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circle.setAttribute('cx', x);
+      circle.setAttribute('cy', y);
+      circle.setAttribute('r', isBoundary ? 8.5 : 7);
+      circle.setAttribute('class', 'bead' + (isBoundary?' marker':''));
+      circle.dataset.index = i;
+      ring.appendChild(circle);
+    }
+  }
+
+  function renderRing(){
+    const count = activeCount();
+    const beads = ring.querySelectorAll('.bead');
+    beads.forEach(b=>{
+      const i = parseInt(b.dataset.index);
+      if(i < count) b.classList.add('filled');
+      else b.classList.remove('filled');
+    });
+  }
+
+  function pulseLastBead(){
+    const count = activeCount();
+    const beads = ring.querySelectorAll('.bead');
+    const b = beads[count-1];
+    if(b){
+      b.classList.remove('pulse');
+      void b.offsetWidth;
+      b.classList.add('pulse');
+    }
+  }
+
+  // ---- render center + log ----
+  function renderAll(){
+    renderRing();
+    const map = activeMap();
+    const count = activeCount();
+    const r = getRakah(count);
+    if(!totalRakahs){
+      rakahNum.textContent='—';
+      rakahArabic.textContent='استعد';
+      rakahOf.textContent='Select a prayer';
+      phaseLabel.textContent='';
+      phaseLabelAr.textContent='';
+    } else if(count===0){
+      rakahNum.textContent='—';
+      rakahArabic.textContent='جاهز';
+      rakahOf.textContent = 'Ready · ' + totalRakahs + ' rakah' + (totalRakahs>1?'s':'');
+      phaseLabel.textContent = mode==='sujud' ? 'Waiting for 1st Sujud' : 'Next: Takbiratul Ihram';
+      phaseLabelAr.textContent = mode==='sujud' ? 'في انتظار السجدة الأولى' : 'التالي: تكبيرة الإحرام';
+    } else {
+      rakahNum.textContent = r;
+      rakahArabic.textContent = rakahWordAr[r] || ('الركعة ' + arabicIndic[r]);
+      const done = count >= map.length;
+      rakahOf.textContent = done ? ('Rakah ' + r + ' of ' + totalRakahs + ' · prayer complete') : ('Rakah ' + r + ' of ' + totalRakahs);
+      const phase = getPhase(count);
+      if(done){
+        phaseLabel.textContent = phase.en + ' — finish with Salam';
+        phaseLabelAr.textContent = phase.ar + ' — ثم التسليم';
+      } else {
+        phaseLabel.textContent = phase.en;
+        phaseLabelAr.textContent = phase.ar;
+      }
+    }
+    logCount.textContent = count + ' heard';
+    if(logEntries.length===0){
+      logList.innerHTML = '<div class="log-empty">No '+unitLabel().toLowerCase()+'s counted yet</div>';
+    } else {
+      logList.innerHTML = logEntries.slice().reverse().map(e=>
+        '<div class="log-item"><span class="n">#'+e.n+'</span><span class="r">Rakah '+e.rakah+'</span><span class="t">'+e.time+'</span></div>'
+      ).join('');
+    }
+  }
+
+  function addCount(){
+    const map = activeMap();
+    let count = activeCount();
+    if(!totalRakahs){ flashStatus('Pick a prayer first'); return; }
+    if(count >= map.length){ flashStatus('Prayer already complete — tap Reset to start again'); return; }
+    count++;
+    setActiveCount(count);
+    const r = getRakah(count);
+    const time = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    logEntries.push({n:count, rakah:r, time});
+    renderAll();
+    pulseLastBead();
+    if(navigator.vibrate) navigator.vibrate(40);
+  }
+
+  function undoCount(){
+    let count = activeCount();
+    if(count===0) return;
+    count--;
+    setActiveCount(count);
+    logEntries.pop();
+    renderAll();
+  }
+
+  function flashStatus(msg){
+    const prev = statusText.textContent;
+    statusText.textContent = msg;
+    setTimeout(()=>{ if(!isListening) statusText.textContent = prev; }, 1800);
+  }
+
+  tapBtn.onclick = addCount;
+  undoBtn.onclick = undoCount;
+  resetBtn.onclick = ()=>{
+    setActiveCount(0); logEntries=[]; renderAll();
+  };
+
+  // ---- mode switch ----
+  const modeChips = document.querySelectorAll('.mode-chip');
+  const cameraPanel = document.getElementById('cameraPanel');
+  const logHeadLabel = document.getElementById('logHeadLabel');
+  const motionPanel = document.getElementById('motionPanel');
+  modeChips.forEach(chip=>{
+    chip.onclick = ()=>{
+      const newMode = chip.dataset.mode;
+      if(newMode===mode) return;
+      if(mode==='takbir' && isListening) stopListening();
+      if(mode==='sujud' && camActive) stopCamera();
+      if(mode==='motion' && motionActive) stopMotion();
+      mode = newMode;
+      modeChips.forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      cameraPanel.style.display = (mode==='sujud') ? 'block' : 'none';
+      motionPanel.style.display = (mode==='motion') ? 'block' : 'none';
+      listenBtn.style.display = (mode==='takbir') ? '' : 'none';
+      statusLine.style.display = (mode==='takbir') ? '' : 'none';
+      tapBtn.textContent = (mode==='takbir') ? '+1 Takbir' : '+1 Sujud';
+      logHeadLabel.textContent = (mode==='takbir') ? 'Takbir Log' : 'Sujud Log';
+      buildRing();
+      renderAll();
+    };
+  });
+
+  // ---- speech recognition ----
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function matchesTakbir(transcript){
+    const t = transcript.toLowerCase();
+    return t.includes('akbar') || t.includes('أكبر') || t.includes('اكبر');
+  }
+
+  function startListening(){
+    if(!SpeechRecognition){
+      statusLine.classList.remove('live');
+      statusText.textContent = "Voice recognition isn't supported in this browser — use +1 Takbir instead";
+      return;
+    }
+    if(!totalRakahs){ flashStatus('Pick a prayer first'); return; }
+    recognition = new SpeechRecognition();
+    recognition.lang = langSel.value;
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event)=>{
+      const last = event.results[event.results.length-1];
+      const transcript = last[0].transcript;
+      if(matchesTakbir(transcript) && Date.now()-lastDetectTime > 1500){
+        lastDetectTime = Date.now();
+        addCount();
+      }
+    };
+    recognition.onerror = (e)=>{
+      if(e.error === 'no-speech' || e.error === 'aborted') return;
+      statusText.textContent = 'Mic issue (' + e.error + ') — you can keep using +1 Takbir';
+    };
+    recognition.onend = ()=>{
+      if(isListening){
+        try{ recognition.start(); }catch(e){}
+      }
+    };
+    try{
+      recognition.start();
+      isListening = true;
+      listenBtn.textContent = 'Stop Listening';
+      listenBtn.classList.add('stop');
+      centerPlate.classList.add('listening');
+      statusLine.classList.add('live');
+      statusText.textContent = 'Listening for "Allahu Akbar" …';
+    }catch(e){
+      statusText.textContent = 'Could not start the microphone';
+    }
+  }
+
+  function stopListening(){
+    isListening = false;
+    if(recognition){ try{ recognition.stop(); }catch(e){} }
+    listenBtn.textContent = 'Start Listening';
+    listenBtn.classList.remove('stop');
+    centerPlate.classList.remove('listening');
+    statusLine.classList.remove('live');
+    statusText.textContent = 'Tap "Start Listening" or count manually';
+  }
+
+  listenBtn.onclick = ()=> isListening ? stopListening() : startListening();
+
+  // ---- camera-based Sujud detection ----
+  // Watches the phone's camera for a sustained drop in brightness (the
+  // camera being covered/shadowed as the face comes down for Sujud) and
+  // counts that as one prostration. Every 2 count as one rak'ah's worth,
+  // since every rak'ah always has exactly 2 Sujud regardless of prayer.
+  // All frame analysis happens locally in this canvas — no frame is ever
+  // stored, exported, or sent anywhere.
+  const camVideo = document.getElementById('camVideo');
+  const camCanvas = document.getElementById('camCanvas');
+  const camCtx = camCanvas.getContext('2d', { willReadFrequently: true });
+  const camEnableBtn = document.getElementById('camEnableBtn');
+  const camRecalBtn = document.getElementById('camRecalBtn');
+  const camFacing = document.getElementById('camFacing');
+  const camSensitivity = document.getElementById('camSensitivity');
+  const camStatus = document.getElementById('camStatus');
+  const brightnessFill = document.getElementById('brightnessFill');
+
+  let camStream = null;
+  let camBaseline = null;
+  let camDarkSince = null;
+  let camState = 'bright'; // 'bright' | 'dark'
+  let camLastEventTime = 0;
+  let camLoopId = null;
+
+  const SENSITIVITY_RATIO = { low:0.35, medium:0.5, high:0.65 };
+  const MIN_DARK_MS = 300;
+  const COOLDOWN_MS = 900;
+
+  function sampleBrightness(){
+    camCtx.drawImage(camVideo, 0, 0, camCanvas.width, camCanvas.height);
+    const data = camCtx.getImageData(0, 0, camCanvas.width, camCanvas.height).data;
+    let sum = 0, n = 0;
+    for(let i=0; i<data.length; i+=4){
+      sum += (data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114);
+      n++;
+    }
+    return sum/n; // 0-255
+  }
+
+  async function startCamera(){
+    try{
+      camStream = await navigator.mediaDevices.getUserMedia({
+        video:{ facingMode: camFacing.value, width:{ideal:160}, height:{ideal:120} },
+        audio:false
+      });
+      camVideo.srcObject = camStream;
+      await camVideo.play();
+      camActive = true;
+      camEnableBtn.textContent = 'Disable Camera';
+      camStatus.textContent = 'Calibrating — keep the phone still and well‑lit for a second…';
+      camBaseline = null;
+      setTimeout(calibrate, 600);
+      camLoopId = setInterval(cameraTick, 120);
+    }catch(e){
+      camStatus.textContent = 'Could not access the camera (' + (e.message||e.name) + ')';
+    }
+  }
+
+  function stopCamera(){
+    if(camLoopId) clearInterval(camLoopId);
+    if(camStream) camStream.getTracks().forEach(t=>t.stop());
+    camActive = false;
+    camBaseline = null;
+    camState = 'bright';
+    camEnableBtn.textContent = 'Enable Camera';
+    camStatus.textContent = 'Camera off · lay the phone screen‑up on your mat, then tap Enable Camera';
+    brightnessFill.style.width = '0%';
+  }
+
+  function calibrate(){
+    if(!camActive) return;
+    const b = sampleBrightness();
+    camBaseline = b;
+    camStatus.textContent = 'Calibrated · watching for Sujud…';
+  }
+
+  function cameraTick(){
+    if(!camActive || camVideo.readyState < 2) return;
+    const b = sampleBrightness();
+    if(camBaseline===null){ camBaseline = b; return; }
+    const ratio = camBaseline>0 ? (b/camBaseline) : 1;
+    brightnessFill.style.width = Math.max(0, Math.min(100, ratio*100)) + '%';
+
+    const threshold = SENSITIVITY_RATIO[camSensitivity.value] ?? 0.5;
+    const now = Date.now();
+
+    if(ratio < threshold){
+      if(camState==='bright'){
+        if(camDarkSince===null) camDarkSince = now;
+        if(now - camDarkSince >= MIN_DARK_MS){
+          camState = 'dark';
+          camStatus.textContent = 'Dark detected — in Sujud…';
+          camStatus.classList.add('dark');
+        }
+      }
+    } else {
+      camDarkSince = null;
+      if(camState==='dark'){
+        camState = 'bright';
+        camStatus.classList.remove('dark');
+        if(now - camLastEventTime > COOLDOWN_MS){
+          camLastEventTime = now;
+          camStatus.textContent = 'Sujud counted · watching…';
+          addCount();
+        } else {
+          camStatus.textContent = 'Watching for Sujud…';
+        }
+      } else {
+        camStatus.textContent = 'Watching for Sujud…';
+      }
+    }
+  }
+
+  camEnableBtn.onclick = ()=> camActive ? stopCamera() : startCamera();
+  camRecalBtn.onclick = ()=>{
+    if(!camActive){ flashStatus('Enable the camera first'); return; }
+    camStatus.textContent = 'Recalibrating…';
+    setTimeout(calibrate, 300);
+  };
+  camFacing.onchange = ()=>{ if(camActive){ stopCamera(); startCamera(); } };
+
+  // ---- motion-based Sujud detection (phone in front pocket) ----
+  // Watches the phone's tilt (deviceorientation "beta" = front/back tilt)
+  // relative to a calibrated standing baseline. Ruku only bends the torso
+  // partway forward; Sujud bends it much further. We only count a bow as
+  // Sujud once it clears the deeper "sujud" threshold, so a plain ruku
+  // shouldn't trigger a count — but in-pocket motion is inherently the
+  // noisiest of the three input methods (walking, adjusting the phone, or
+  // an unusual pocket angle can all look like a bow), so treat counts here
+  // as a rougher estimate than voice or camera, and retune Sensitivity or
+  // Calibrate again if it's over- or under-counting for your pocket/build.
+  const motionEnableBtn = document.getElementById('motionEnableBtn');
+  const motionRecalBtn = document.getElementById('motionRecalBtn');
+  const motionSensitivity = document.getElementById('motionSensitivity');
+  const motionStatus = document.getElementById('motionStatus');
+  const tiltFill = document.getElementById('tiltFill');
+
+  let motionBaseline = null;
+  let motionTiltSince = null;
+  let motionState = 'up'; // 'up' | 'down'
+  let motionLastEventTime = 0;
+  let motionLoopId = null;
+  let lastBeta = null;
+
+  // "deep" tilt (degrees away from standing baseline) required to count as
+  // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
+  const MOTION_SENSITIVITY_DEG = { low:70, medium:55, high:40 };
+  const MIN_TILT_MS = 350;
+  const MOTION_COOLDOWN_MS = 900;
+
+  function onDeviceOrientation(e){
+    if(e.beta===null || e.beta===undefined) return;
+    lastBeta = e.beta;
+  }
+
+  async function startMotion(){
+    if(typeof DeviceOrientationEvent === 'undefined'){
+      motionStatus.textContent = 'Motion sensors are not supported on this device/browser';
+      return;
+    }
+    try{
+      if(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function'){
+        const res = await DeviceMotionEvent.requestPermission();
+        if(res !== 'granted'){ motionStatus.textContent = 'Motion permission denied'; return; }
+      }
+      if(typeof DeviceOrientationEvent.requestPermission === 'function'){
+        const res2 = await DeviceOrientationEvent.requestPermission();
+        if(res2 !== 'granted'){ motionStatus.textContent = 'Orientation permission denied'; return; }
+      }
+    }catch(e){
+      motionStatus.textContent = 'Could not get motion permission (' + (e.message||e.name) + ')';
+      return;
+    }
+    window.addEventListener('deviceorientation', onDeviceOrientation);
+    motionActive = true;
+    motionEnableBtn.textContent = 'Disable Motion';
+    motionStatus.textContent = 'Calibrating — stand still for a second…';
+    motionBaseline = null;
+    lastBeta = null;
+    setTimeout(calibrateMotion, 600);
+    motionLoopId = setInterval(motionTick, 120);
+  }
+
+  function stopMotion(){
+    window.removeEventListener('deviceorientation', onDeviceOrientation);
+    if(motionLoopId) clearInterval(motionLoopId);
+    motionActive = false;
+    motionBaseline = null;
+    motionState = 'up';
+    motionEnableBtn.textContent = 'Enable Motion';
+    motionStatus.textContent = 'Motion off · pocket the phone upright, stand still, then tap Enable Motion';
+    tiltFill.style.width = '0%';
+  }
+
+  function calibrateMotion(){
+    if(!motionActive || lastBeta===null) return;
+    motionBaseline = lastBeta;
+    motionStatus.textContent = 'Calibrated · watching for Sujud…';
+  }
+
+  function motionTick(){
+    if(!motionActive || lastBeta===null) return;
+    if(motionBaseline===null){ motionBaseline = lastBeta; return; }
+    const delta = Math.abs(lastBeta - motionBaseline);
+    const threshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
+    tiltFill.style.width = Math.max(0, Math.min(100, (delta/threshold)*100)) + '%';
+    const now = Date.now();
+
+    if(delta > threshold){
+      if(motionState==='up'){
+        if(motionTiltSince===null) motionTiltSince = now;
+        if(now - motionTiltSince >= MIN_TILT_MS){
+          motionState = 'down';
+          motionStatus.textContent = 'Deep bow detected — in Sujud…';
+          motionStatus.classList.add('dark');
+        }
+      }
+    } else {
+      motionTiltSince = null;
+      if(motionState==='down'){
+        motionState = 'up';
+        motionStatus.classList.remove('dark');
+        if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
+          motionLastEventTime = now;
+          motionStatus.textContent = 'Sujud counted · watching…';
+          addCount();
+        } else {
+          motionStatus.textContent = 'Watching for Sujud…';
+        }
+      } else {
+        motionStatus.textContent = 'Watching for Sujud…';
+      }
+    }
+  }
+
+  motionEnableBtn.onclick = ()=> motionActive ? stopMotion() : startMotion();
+  motionRecalBtn.onclick = ()=>{
+    if(!motionActive){ flashStatus('Enable motion first'); return; }
+    motionStatus.textContent = 'Recalibrating…';
+    setTimeout(calibrateMotion, 300);
+  };
+
+  // init with Dhuhr/Asr/Isha style default not selected — force user choice
+  renderAll();
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    });
+  }
+})();
+</script>
+</body>
+</html>
