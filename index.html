@@ -213,6 +213,65 @@
   }
   .cam-status.dark{ color:var(--gold-bright); font-weight:600; }
 
+  .qibla-panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:18px;
+  }
+  .compass-wrap{
+    display:flex;
+    justify-content:center;
+    margin:14px 0;
+  }
+  .compass-circle{
+    position:relative;
+    width:180px;
+    height:180px;
+    border-radius:50%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+  }
+  .compass-n{
+    position:absolute;
+    top:8px;
+    left:50%;
+    transform:translateX(-50%);
+    font-family:'JetBrains Mono';
+    font-size:11px;
+    color:var(--text-faint);
+    letter-spacing:1px;
+  }
+  .compass-center-dot{
+    position:absolute;
+    top:50%; left:50%;
+    width:6px; height:6px;
+    border-radius:50%;
+    background:var(--text-faint);
+    transform:translate(-50%,-50%);
+  }
+  .compass-needle{
+    position:absolute;
+    top:50%; left:50%;
+    width:2px;
+    height:76px;
+    transform-origin:50% 100%;
+    transform:translate(-50%,-100%) rotate(0deg);
+    transition:transform .2s ease-out;
+  }
+  .compass-needle-line{
+    width:2px;
+    height:100%;
+    background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+    margin:0 auto;
+  }
+  .compass-needle-tip{
+    position:absolute;
+    top:-14px; left:50%;
+    transform:translateX(-50%);
+    font-size:18px;
+  }
 
   /* the lantern / misbaha ring */
   .ring-wrap{
@@ -457,6 +516,7 @@
         <option value="ar-SA">🎙 Arabic recognition (ar)</option>
         <option value="en-US">🎙 English recognition (en)</option>
       </select>
+      <button class="btn-secondary small" id="qiblaToggleBtn" type="button">🧭 Qibla</button>
     </div>
   </header>
 
@@ -506,6 +566,23 @@
     </div>
     <div class="brightness-meter"><div class="brightness-fill" id="tiltFill"></div></div>
     <div class="cam-status" id="motionStatus">Motion off · pocket the phone upright, stand still, then tap Enable Motion</div>
+  </div>
+
+  <div class="qibla-panel" id="qiblaPanel" style="display:none;">
+    <div class="camera-row">
+      <button class="btn-secondary small" id="qiblaEnableBtn">Enable Qibla</button>
+    </div>
+    <div class="compass-wrap">
+      <div class="compass-circle">
+        <div class="compass-n">N</div>
+        <div class="compass-center-dot"></div>
+        <div class="compass-needle" id="compassNeedle">
+          <div class="compass-needle-line"></div>
+          <div class="compass-needle-tip">🕋</div>
+        </div>
+      </div>
+    </div>
+    <div class="cam-status" id="qiblaStatus">Qibla off · tap Enable Qibla, then hold your phone flat and rotate until the Kaaba icon points to the top</div>
   </div>
 
   <div class="ring-wrap">
@@ -1179,6 +1256,119 @@
   motionRecalBtn.onclick = ()=>{
     if(!motionActive){ flashStatus('Enable motion first'); return; }
     runCalibrationCountdown();
+  };
+
+  // ---- Qibla compass ----
+  // Bearing to the Kaaba via great-circle initial bearing formula, then
+  // rotate a needle by (qibla bearing − device compass heading) so it
+  // always points at Mecca regardless of which way the phone faces.
+  const KAABA_LAT = 21.4225, KAABA_LON = 39.8262;
+  const qiblaToggleBtn = document.getElementById('qiblaToggleBtn');
+  const qiblaPanel = document.getElementById('qiblaPanel');
+  const qiblaEnableBtn = document.getElementById('qiblaEnableBtn');
+  const qiblaStatus = document.getElementById('qiblaStatus');
+  const compassNeedle = document.getElementById('compassNeedle');
+
+  let qiblaActive = false;
+  let qiblaBearing = null;      // degrees from true north, 0-360
+  let qiblaWatchdogId = null;
+  let qiblaOrientationHandler = null;
+
+  function toRad(d){ return d * Math.PI/180; }
+  function toDeg(r){ return r * 180/Math.PI; }
+
+  function computeQiblaBearing(lat, lon){
+    const φ1=toRad(lat), φ2=toRad(KAABA_LAT), Δλ=toRad(KAABA_LON-lon);
+    const y = Math.sin(Δλ) * Math.cos(φ2);
+    const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+    return (toDeg(Math.atan2(y,x)) + 360) % 360;
+  }
+  function computeDistanceKm(lat, lon){
+    const R=6371, φ1=toRad(lat), φ2=toRad(KAABA_LAT);
+    const Δφ=toRad(KAABA_LAT-lat), Δλ=toRad(KAABA_LON-lon);
+    const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+    return R * 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function updateQiblaNeedle(heading){
+    if(qiblaBearing===null) return;
+    const rotation = (qiblaBearing - heading + 360) % 360;
+    compassNeedle.style.transform = 'translate(-50%,-100%) rotate(' + rotation + 'deg)';
+  }
+
+  function handleQiblaOrientation(event){
+    clearTimeout(qiblaWatchdogId);
+    let heading;
+    if(typeof event.webkitCompassHeading === 'number'){
+      heading = event.webkitCompassHeading; // iOS Safari: already clockwise from true north
+    } else if(event.alpha !== null && event.alpha !== undefined){
+      heading = (360 - event.alpha) % 360; // Android: alpha is counter-clockwise from device's start orientation
+    } else {
+      return;
+    }
+    qiblaStatus.textContent = 'Qibla is ' + Math.round(qiblaBearing) + '\u00b0 from North \u00b7 rotate until the Kaaba icon points to the top';
+    qiblaStatus.classList.add('dark');
+    updateQiblaNeedle(heading);
+  }
+
+  function startQiblaCompass(){
+    if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      DeviceOrientationEvent.requestPermission().then(state=>{
+        if(state==='granted') attachQiblaListener();
+        else qiblaStatus.textContent = 'Compass access denied \u00b7 enable motion & orientation access for this site in Settings, then try again';
+      }).catch(()=>{ qiblaStatus.textContent = 'Could not request compass access on this device.'; });
+    } else {
+      attachQiblaListener();
+    }
+  }
+
+  function attachQiblaListener(){
+    qiblaOrientationHandler = handleQiblaOrientation;
+    window.addEventListener('deviceorientationabsolute', qiblaOrientationHandler, true);
+    window.addEventListener('deviceorientation', qiblaOrientationHandler, true);
+    qiblaWatchdogId = setTimeout(()=>{
+      qiblaStatus.textContent = 'No compass data received \u00b7 check that this site has motion/orientation access in your browser\u2019s site settings, or that your device has a compass sensor.';
+    }, 3000);
+  }
+
+  function stopQiblaCompass(){
+    if(qiblaOrientationHandler){
+      window.removeEventListener('deviceorientationabsolute', qiblaOrientationHandler, true);
+      window.removeEventListener('deviceorientation', qiblaOrientationHandler, true);
+      qiblaOrientationHandler = null;
+    }
+    clearTimeout(qiblaWatchdogId);
+    qiblaActive = false;
+    qiblaBearing = null;
+    qiblaEnableBtn.textContent = 'Enable Qibla';
+    qiblaStatus.classList.remove('dark');
+    qiblaStatus.textContent = 'Qibla off \u00b7 tap Enable Qibla, then hold your phone flat and rotate until the Kaaba icon points to the top';
+  }
+
+  qiblaToggleBtn.onclick = ()=>{
+    const opening = qiblaPanel.style.display === 'none';
+    qiblaPanel.style.display = opening ? 'block' : 'none';
+    if(!opening) stopQiblaCompass();
+  };
+
+  qiblaEnableBtn.onclick = ()=>{
+    if(qiblaActive){ stopQiblaCompass(); return; }
+    if(!navigator.geolocation){
+      qiblaStatus.textContent = 'This browser doesn\u2019t support location access, needed to calculate Qibla direction.';
+      return;
+    }
+    qiblaStatus.textContent = 'Getting your location\u2026';
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const { latitude, longitude } = pos.coords;
+      qiblaBearing = computeQiblaBearing(latitude, longitude);
+      const distanceKm = Math.round(computeDistanceKm(latitude, longitude));
+      qiblaActive = true;
+      qiblaEnableBtn.textContent = 'Disable Qibla';
+      qiblaStatus.textContent = 'Qibla is ' + Math.round(qiblaBearing) + '\u00b0 from North \u00b7 ' + distanceKm + ' km to Mecca \u2014 hold phone flat and rotate';
+      startQiblaCompass();
+    }, err=>{
+      qiblaStatus.textContent = 'Location access denied \u2014 Qibla needs your location to calculate the direction to Mecca.';
+    }, { enableHighAccuracy:true, timeout:10000 });
   };
 
   // init with Dhuhr/Asr/Isha style default not selected — force user choice
