@@ -1023,27 +1023,32 @@
   camFacing.onchange = ()=>{ if(camActive){ stopCamera(); startCamera(); } };
 
   // ---- motion-based Sujud detection (phone in front pocket) ----
-  // Watches the phone's tilt (deviceorientation "beta" = front/back tilt)
-  // relative to a calibrated standing baseline. Ruku only bends the torso
-  // partway forward; Sujud bends it much further. We only count a bow as
-  // Sujud once it clears the deeper "sujud" threshold, so a plain ruku
-  // shouldn't trigger a count — but in-pocket motion is inherently the
-  // noisiest of the three input methods (walking, adjusting the phone, or
-  // an unusual pocket angle can all look like a bow), so treat counts here
-  // as a rougher estimate than voice or camera, and retune Sensitivity or
-  // Calibrate again if it's over- or under-counting for your pocket/build.
+  // Watches the phone's tilt using the accelerometer's gravity vector
+  // (devicemotion) rather than the compass-fused orientation sensor —
+  // gravity-vector tilt needs no magnetometer/compass calibration, so it
+  // works reliably on far more phones. We measure the angle between the
+  // current gravity vector and a calibrated "standing" baseline vector.
+  // Ruku only bends the torso partway forward; Sujud bends it much further.
+  // We only count a bow as Sujud once it clears the deeper "sujud"
+  // threshold, so a plain ruku shouldn't trigger a count — but in-pocket
+  // motion is inherently the noisiest of the three input methods (walking,
+  // adjusting the phone, or an unusual pocket angle can all look like a
+  // bow), so treat counts here as a rougher estimate than voice or camera,
+  // and retune Sensitivity or Calibrate again if it's over/under-counting.
   const motionEnableBtn = document.getElementById('motionEnableBtn');
   const motionRecalBtn = document.getElementById('motionRecalBtn');
   const motionSensitivity = document.getElementById('motionSensitivity');
   const motionStatus = document.getElementById('motionStatus');
   const tiltFill = document.getElementById('tiltFill');
 
-  let motionBaseline = null;
+  let motionBaselineVec = null;
   let motionTiltSince = null;
   let motionState = 'up'; // 'up' | 'down'
   let motionLastEventTime = 0;
   let motionLoopId = null;
-  let lastBeta = null;
+  let motionWatchdogId = null;
+  let lastGravity = null; // {x,y,z}
+  let gotAnyMotionData = false;
 
   // "deep" tilt (degrees away from standing baseline) required to count as
   // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
@@ -1051,44 +1056,59 @@
   const MIN_TILT_MS = 350;
   const MOTION_COOLDOWN_MS = 900;
 
-  function onDeviceOrientation(e){
-    if(e.beta===null || e.beta===undefined) return;
-    lastBeta = e.beta;
+  function onDeviceMotion(e){
+    const g = e.accelerationIncludingGravity;
+    if(!g || g.x===null || g.y===null || g.z===null) return;
+    lastGravity = { x:g.x, y:g.y, z:g.z };
+    gotAnyMotionData = true;
+  }
+
+  function vecAngleDeg(a, b){
+    const dot = a.x*b.x + a.y*b.y + a.z*b.z;
+    const magA = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+    const magB = Math.sqrt(b.x*b.x + b.y*b.y + b.z*b.z);
+    if(magA===0 || magB===0) return 0;
+    const cos = Math.max(-1, Math.min(1, dot/(magA*magB)));
+    return Math.acos(cos) * (180/Math.PI);
   }
 
   async function startMotion(){
-    if(typeof DeviceOrientationEvent === 'undefined'){
+    if(typeof DeviceMotionEvent === 'undefined'){
       motionStatus.textContent = 'Motion sensors are not supported on this device/browser';
       return;
     }
     try{
-      if(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function'){
+      if(typeof DeviceMotionEvent.requestPermission === 'function'){
         const res = await DeviceMotionEvent.requestPermission();
         if(res !== 'granted'){ motionStatus.textContent = 'Motion permission denied'; return; }
-      }
-      if(typeof DeviceOrientationEvent.requestPermission === 'function'){
-        const res2 = await DeviceOrientationEvent.requestPermission();
-        if(res2 !== 'granted'){ motionStatus.textContent = 'Orientation permission denied'; return; }
       }
     }catch(e){
       motionStatus.textContent = 'Could not get motion permission (' + (e.message||e.name) + ')';
       return;
     }
-    window.addEventListener('deviceorientation', onDeviceOrientation);
+    gotAnyMotionData = false;
+    window.addEventListener('devicemotion', onDeviceMotion);
     motionActive = true;
     motionEnableBtn.textContent = 'Disable Motion';
     motionStatus.textContent = 'Calibrating — stand still for a second…';
-    motionBaseline = null;
-    lastBeta = null;
+    motionBaselineVec = null;
+    lastGravity = null;
     setTimeout(calibrateMotion, 600);
     motionLoopId = setInterval(motionTick, 120);
+    if(motionWatchdogId) clearTimeout(motionWatchdogId);
+    motionWatchdogId = setTimeout(()=>{
+      if(motionActive && !gotAnyMotionData){
+        motionStatus.textContent = 'No motion data received — check that this site has motion access in your browser\'s site settings, or your device/browser may not support it';
+      }
+    }, 2500);
   }
 
   function stopMotion(){
-    window.removeEventListener('deviceorientation', onDeviceOrientation);
+    window.removeEventListener('devicemotion', onDeviceMotion);
     if(motionLoopId) clearInterval(motionLoopId);
+    if(motionWatchdogId) clearTimeout(motionWatchdogId);
     motionActive = false;
-    motionBaseline = null;
+    motionBaselineVec = null;
     motionState = 'up';
     motionEnableBtn.textContent = 'Enable Motion';
     motionStatus.textContent = 'Motion off · pocket the phone upright, stand still, then tap Enable Motion';
@@ -1096,15 +1116,15 @@
   }
 
   function calibrateMotion(){
-    if(!motionActive || lastBeta===null) return;
-    motionBaseline = lastBeta;
+    if(!motionActive || lastGravity===null) return;
+    motionBaselineVec = { ...lastGravity };
     motionStatus.textContent = 'Calibrated · watching for Sujud…';
   }
 
   function motionTick(){
-    if(!motionActive || lastBeta===null) return;
-    if(motionBaseline===null){ motionBaseline = lastBeta; return; }
-    const delta = Math.abs(lastBeta - motionBaseline);
+    if(!motionActive || lastGravity===null) return;
+    if(motionBaselineVec===null){ motionBaselineVec = { ...lastGravity }; return; }
+    const delta = vecAngleDeg(lastGravity, motionBaselineVec);
     const threshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
     tiltFill.style.width = Math.max(0, Math.min(100, (delta/threshold)*100)) + '%';
     const now = Date.now();
