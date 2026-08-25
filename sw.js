@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakah-tracker-v1';
+const CACHE_NAME = 'rakah-tracker-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -24,10 +24,32 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Cache-first for the app shell; falls back to network for anything else
-// (e.g. Google Fonts) and quietly ignores failures when offline.
+// Network-first for navigations/HTML so app-code updates land automatically
+// the next time you're online, instead of getting stuck on a stale cached
+// version. Falls back to the cached copy only when offline. Static assets
+// (icons, manifest) stay cache-first since they rarely change and this
+// keeps the app instant-loading and offline-capable.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  const isHTML = event.request.mode === 'navigate' ||
+    event.request.destination === 'document' ||
+    event.request.url.endsWith('.html') ||
+    event.request.url.endsWith('/');
+
+  if (isHTML) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
