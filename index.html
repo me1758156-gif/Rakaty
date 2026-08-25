@@ -256,13 +256,6 @@
     border-radius:var(--r-sm);
     padding:8px 26px 8px 10px;
   }
-  select#langSel{
-    background-color:var(--panel);
-    color:var(--text-dim);
-    font-family:'JetBrains Mono';
-    padding:9px 26px 9px 12px;
-    flex:1;
-  }
 
   /* camera / motion / qibla panels — one shared visual treatment */
   .camera-panel, .qibla-panel{
@@ -573,10 +566,6 @@
     <div class="eyebrow">Salah Companion</div>
     <h1>Rakah Tracker<span class="ar">متتبع الركعات</span></h1>
     <div class="toprow">
-      <select id="langSel">
-        <option value="ar-SA">🎙 Arabic recognition (ar)</option>
-        <option value="en-US">🎙 English recognition (en)</option>
-      </select>
       <button class="btn-secondary small" id="qiblaToggleBtn" type="button">🧭 Qibla</button>
     </div>
   </header>
@@ -742,7 +731,6 @@
   const resetBtn = document.getElementById('resetBtn');
   const logList = document.getElementById('logList');
   const logCount = document.getElementById('logCount');
-  const langSel = document.getElementById('langSel');
 
   // ---- wizard step navigation ----
   const steps = {
@@ -1042,7 +1030,7 @@
     }
     if(!totalRakahs){ flashStatus('Pick a prayer first'); return; }
     recognition = new SpeechRecognition();
-    recognition.lang = langSel.value;
+    recognition.lang = 'ar-SA';
     recognition.continuous = true;
     recognition.interimResults = false;
 
