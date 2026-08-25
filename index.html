@@ -85,14 +85,6 @@
     margin-top:3px;
     font-weight:400;
   }
-  .sub{
-    font-size:13px;
-    color:var(--text-dim);
-    line-height:1.55;
-    max-width:320px;
-    margin:12px auto 0;
-  }
-
   /* shared control row under the header */
   .toprow{
     display:flex;
@@ -562,18 +554,6 @@
     font-size:13px;
   }
 
-  footer{
-    margin-top:var(--sp-4);
-    padding-top:var(--sp-4);
-    border-top:1px solid var(--line);
-    text-align:center;
-    font-size:12px;
-    line-height:1.6;
-    color:var(--text-faint);
-    padding-left:8px;
-    padding-right:8px;
-  }
-  footer b{color:var(--text-dim);}
 </style>
 </head>
 <body>
@@ -581,7 +561,6 @@
   <header>
     <div class="eyebrow">Salah Companion</div>
     <h1>Rakah Tracker<span class="ar">متتبع الركعات</span></h1>
-    <p class="sub">Tracks which rak'ah you're in by voice, camera, or a tap — so a stray thought never costs you your place.</p>
     <div class="toprow">
       <select id="langSel">
         <option value="ar-SA">🎙 Arabic recognition (ar)</option>
@@ -708,10 +687,6 @@
     </div>
   </div>
   </div>
-
-  <footer id="footNote">
-    Once installed, the counter, the bead ring, the rak'ah/position display and manual counting all work fully offline — no signal needed. Voice detection needs a connection (it runs through your phone's built‑in speech recognition, sending short audio snippets to your browser vendor's servers). <b>Camera detection runs entirely on your phone</b> — frames are analyzed locally for brightness only; nothing is recorded, saved, or sent anywhere. This tool follows the standard 5‑takbir‑per‑rakah structure (with an extra takbir wherever you sit for tashahhud) — some schools of thought and witr/nafl prayers differ slightly, so treat it as a memory aid, not a ruling.
-  </footer>
 </div>
 
 <script>
