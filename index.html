@@ -16,19 +16,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0D1526;
-    --bg-2:#0A0F1D;
-    --panel:#151F37;
-    --panel-2:#1B2A48;
-    --line: rgba(212,166,87,0.10);
-    --line-strong: rgba(212,166,87,0.22);
-    --gold:#D4A657;
-    --gold-bright:#E8C377;
-    --teal:#4FA89B;
-    --terracotta:#C2685A;
+    --bg:#121212;
+    --bg-2:#0A0A0A;
+    --panel:#1D1D1D;
+    --panel-2:#262626;
+    --line: rgba(255,255,255,0.09);
+    --line-strong: rgba(255,255,255,0.20);
+    --gold:#D8D8D8;
+    --gold-bright:#F2F2F2;
+    --teal:#9A9A9A;
+    --terracotta:#4A4A4A;
     --text:#F2EEE3;
-    --text-dim:#93A0BC;
-    --text-faint:#5C6580;
+    --text-dim:#A8A8A8;
+    --text-faint:#6E6E6E;
 
     /* spacing scale */
     --sp-1:6px; --sp-2:10px; --sp-3:16px; --sp-4:22px; --sp-5:32px;
@@ -36,15 +36,15 @@
     --r-pill:999px; --r-lg:16px; --r-md:12px; --r-sm:8px;
     /* shadows — kept subtle so accents read as refined, not glowing */
     --shadow-card: 0 10px 30px rgba(0,0,0,0.30);
-    --shadow-btn: 0 4px 14px rgba(212,166,87,0.16);
-    --shadow-btn-stop: 0 4px 14px rgba(194,104,90,0.18);
+    --shadow-btn: 0 4px 14px rgba(255,255,255,0.10);
+    --shadow-btn-stop: 0 4px 14px rgba(0,0,0,0.35);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
     background:
-      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(212,166,87,0.07), transparent 60%),
-      radial-gradient(ellipse 700px 500px at 90% 100%, rgba(79,168,155,0.05), transparent 60%),
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255,255,255,0.045), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 90% 100%, rgba(255,255,255,0.025), transparent 60%),
       var(--bg);
     color:var(--text);
     font-family:'Manrope', sans-serif;
@@ -124,8 +124,8 @@
   }
   .chip:hover{border-color:var(--line-strong); color:var(--text);}
   .chip.active{
-    background:linear-gradient(135deg, var(--gold), #B9873F);
-    color:#1A1305;
+    background:linear-gradient(135deg, var(--gold), #A8A8A8);
+    color:#141414;
     border-color:transparent;
     box-shadow:var(--shadow-btn);
   }
@@ -174,8 +174,8 @@
   }
   .mode-chip:hover{color:var(--text);}
   .mode-chip.active{
-    background:linear-gradient(135deg, var(--teal), #367F75);
-    color:#0B1F1C;
+    background:linear-gradient(135deg, var(--teal), #6E6E6E);
+    color:#141414;
   }
 
   /* dropdowns — give them a visible, deliberate affordance instead of the
@@ -337,12 +337,12 @@
     box-shadow: inset 0 0 34px rgba(0,0,0,0.45);
   }
   .center-plate.listening{
-    box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(212,166,87,0.35);
+    box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(255,255,255,0.28);
     animation: breathe 2.6s ease-in-out infinite;
   }
   @keyframes breathe{
-    0%,100%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(212,166,87,0.24); }
-    50%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 12px rgba(212,166,87,0); }
+    0%,100%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(255,255,255,0.18); }
+    50%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 12px rgba(255,255,255,0); }
   }
   .rakah-label{
     font-family:'JetBrains Mono';
@@ -379,8 +379,8 @@
     margin-top:10px;
     padding:5px 12px;
     border-radius:var(--r-pill);
-    background:rgba(79,168,155,0.10);
-    border:1px solid rgba(79,168,155,0.26);
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.18);
     min-height:14px;
     text-align:center;
   }
@@ -434,13 +434,13 @@
   button:active{transform:scale(0.97);}
   .btn-main{
     flex:1.4;
-    background:linear-gradient(135deg, var(--gold), #B9873F);
-    color:#1A1305;
+    background:linear-gradient(135deg, var(--gold), #A8A8A8);
+    color:#141414;
     box-shadow:var(--shadow-btn);
   }
   .btn-main.stop{
-    background:linear-gradient(135deg, var(--terracotta), #8F4438);
-    color:#FBEEE9;
+    background:linear-gradient(135deg, var(--terracotta), #2A2A2A);
+    color:#F0F0F0;
     box-shadow:var(--shadow-btn-stop);
   }
   .btn-secondary{
