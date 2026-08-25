@@ -1002,7 +1002,7 @@
     logEntries.push({n:count, rakah:r, time});
     renderAll();
     pulseLastBead();
-    if(navigator.vibrate) navigator.vibrate(40);
+    if(navigator.vibrate) navigator.vibrate(mode==='motion' ? [70,60,70] : 40);
   }
 
   function undoCount(){
