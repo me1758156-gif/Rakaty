@@ -1072,6 +1072,25 @@
     return Math.acos(cos) * (180/Math.PI);
   }
 
+  const MOTION_PREP_SECONDS = 6;
+  let motionPrepIntervalId = null;
+
+  function runCalibrationCountdown(){
+    let remaining = MOTION_PREP_SECONDS;
+    motionStatus.textContent = 'Pocket the phone now — calibrating in ' + remaining + '…';
+    if(motionPrepIntervalId) clearInterval(motionPrepIntervalId);
+    motionPrepIntervalId = setInterval(()=>{
+      remaining -= 1;
+      if(remaining <= 0){
+        clearInterval(motionPrepIntervalId);
+        motionPrepIntervalId = null;
+        calibrateMotion();
+      } else if(motionActive){
+        motionStatus.textContent = 'Pocket the phone now — calibrating in ' + remaining + '…';
+      }
+    }, 1000);
+  }
+
   async function startMotion(){
     if(typeof DeviceMotionEvent === 'undefined'){
       motionStatus.textContent = 'Motion sensors are not supported on this device/browser';
@@ -1090,23 +1109,23 @@
     window.addEventListener('devicemotion', onDeviceMotion);
     motionActive = true;
     motionEnableBtn.textContent = 'Disable Motion';
-    motionStatus.textContent = 'Calibrating — stand still for a second…';
     motionBaselineVec = null;
     lastGravity = null;
-    setTimeout(calibrateMotion, 600);
+    runCalibrationCountdown();
     motionLoopId = setInterval(motionTick, 120);
     if(motionWatchdogId) clearTimeout(motionWatchdogId);
     motionWatchdogId = setTimeout(()=>{
       if(motionActive && !gotAnyMotionData){
         motionStatus.textContent = 'No motion data received — check that this site has motion access in your browser\'s site settings, or your device/browser may not support it';
       }
-    }, 2500);
+    }, MOTION_PREP_SECONDS*1000 + 2000);
   }
 
   function stopMotion(){
     window.removeEventListener('devicemotion', onDeviceMotion);
     if(motionLoopId) clearInterval(motionLoopId);
     if(motionWatchdogId) clearTimeout(motionWatchdogId);
+    if(motionPrepIntervalId){ clearInterval(motionPrepIntervalId); motionPrepIntervalId = null; }
     motionActive = false;
     motionBaselineVec = null;
     motionState = 'up';
@@ -1159,8 +1178,7 @@
   motionEnableBtn.onclick = ()=> motionActive ? stopMotion() : startMotion();
   motionRecalBtn.onclick = ()=>{
     if(!motionActive){ flashStatus('Enable motion first'); return; }
-    motionStatus.textContent = 'Recalibrating…';
-    setTimeout(calibrateMotion, 300);
+    runCalibrationCountdown();
   };
 
   // init with Dhuhr/Asr/Isha style default not selected — force user choice
