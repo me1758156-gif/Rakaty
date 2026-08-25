@@ -395,6 +395,15 @@
     box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(212,166,87,0.35);
     animation: breathe 2.6s ease-in-out infinite;
   }
+  .center-plate.complete{
+    background: radial-gradient(circle at 50% 40%, rgba(79,168,155,0.18), var(--bg-2) 75%);
+    border-color: rgba(79,168,155,0.45);
+    box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 3px rgba(79,168,155,0.14);
+  }
+  .rakah-number.complete-check{
+    font-size:52px;
+    color:var(--teal);
+  }
   @keyframes breathe{
     0%,100%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(212,166,87,0.24); }
     50%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 12px rgba(212,166,87,0); }
@@ -742,10 +751,31 @@
   let selectedPrayerLabel = '';
   const trackSummaryText = document.getElementById('trackSummaryText');
 
+  // ---- keep screen awake while actively tracking ----
+  let wakeLock = null;
+  async function acquireWakeLock(){
+    if(!('wakeLock' in navigator)) return;
+    try{
+      wakeLock = await navigator.wakeLock.request('screen');
+    }catch(e){ /* denied or unsupported — fail silently, counting still works */ }
+  }
+  function releaseWakeLock(){
+    if(wakeLock){ wakeLock.release().catch(()=>{}); wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    // the OS/browser force-releases the lock whenever the tab is hidden,
+    // so re-request it once the person comes back if they're still tracking
+    if(document.visibilityState==='visible' && steps.track.classList.contains('active')){
+      acquireWakeLock();
+    }
+  });
+
   function goToStep(name){
     Object.values(steps).forEach(el=>el.classList.remove('active'));
     steps[name].classList.add('active');
     window.scrollTo({top:0, behavior:'smooth'});
+    if(name==='track') acquireWakeLock();
+    else releaseWakeLock();
   }
 
   function updateTrackSummary(){
@@ -915,28 +945,39 @@
     const r = getRakah(count);
     if(!totalRakahs){
       rakahNum.textContent='—';
+      rakahNum.classList.remove('complete-check');
       rakahArabic.textContent='استعد';
       rakahOf.textContent='Select a prayer';
       phaseLabel.textContent='';
       phaseLabelAr.textContent='';
+      centerPlate.classList.remove('complete');
     } else if(count===0){
       rakahNum.textContent='—';
+      rakahNum.classList.remove('complete-check');
       rakahArabic.textContent='جاهز';
       rakahOf.textContent = 'Ready · ' + totalRakahs + ' rakah' + (totalRakahs>1?'s':'');
       phaseLabel.textContent = (mode==='sujud'||mode==='motion') ? 'Waiting for 1st Sujud' : 'Next: Takbiratul Ihram';
       phaseLabelAr.textContent = (mode==='sujud'||mode==='motion') ? 'في انتظار السجدة الأولى' : 'التالي: تكبيرة الإحرام';
+      centerPlate.classList.remove('complete');
     } else {
-      rakahNum.textContent = r;
-      rakahArabic.textContent = rakahWordAr[r] || ('الركعة ' + arabicIndic[r]);
       const done = count >= map.length;
-      rakahOf.textContent = done ? ('Rakah ' + r + ' of ' + totalRakahs + ' · prayer complete') : ('Rakah ' + r + ' of ' + totalRakahs);
-      const phase = getPhase(count);
       if(done){
-        phaseLabel.textContent = phase.en + ' — finish with Salam';
-        phaseLabelAr.textContent = phase.ar + ' — ثم التسليم';
+        rakahNum.textContent = '✓';
+        rakahNum.classList.add('complete-check');
+        rakahArabic.textContent = 'تمّت الصلاة';
+        rakahOf.textContent = 'Prayer complete';
+        phaseLabel.textContent = 'Finish with Salam';
+        phaseLabelAr.textContent = 'ثم التسليم';
+        centerPlate.classList.add('complete');
       } else {
+        rakahNum.textContent = r;
+        rakahNum.classList.remove('complete-check');
+        rakahArabic.textContent = rakahWordAr[r] || ('الركعة ' + arabicIndic[r]);
+        rakahOf.textContent = 'Rakah ' + r + ' of ' + totalRakahs;
+        const phase = getPhase(count);
         phaseLabel.textContent = phase.en;
         phaseLabelAr.textContent = phase.ar;
+        centerPlate.classList.remove('complete');
       }
     }
     logCount.textContent = count + ' heard';
