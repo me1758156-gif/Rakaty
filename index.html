@@ -639,12 +639,21 @@
     return map;
   }
 
-  // ---- simpler structure for camera mode: every rak'ah always has exactly
-  // 2 prostrations, no matter the prayer or the tashahhud — so counting dark
-  // dips is enough on its own to know the rak'ah.
+  // ---- simpler structure for camera/motion modes: every rak'ah always has
+  // exactly 2 prostrations. After the 2nd Sujud of a rak'ah, you either sit
+  // for tashahhud (rak'ah 2 and the last rak'ah) or stand straight into the
+  // next rak'ah. When you're standing straight into the next rak'ah, the
+  // rak'ah number should advance the instant that 2nd Sujud finishes — you're
+  // already on your way up into the next one. When you're about to sit for
+  // tashahhud instead, keep showing the rak'ah you just finished, so the
+  // display still tells you which rak'ah you're sitting for.
   function buildSujudMap(n){
     const map = [];
-    for(let rak=1; rak<=n; rak++){ map.push(rak); map.push(rak); }
+    for(let rak=1; rak<=n; rak++){
+      const followedBySit = (rak===2) || (rak===n);
+      map.push(rak); // 1st sujud
+      map.push(followedBySit ? rak : rak+1); // 2nd sujud
+    }
     return map;
   }
 
@@ -1043,12 +1052,15 @@
 
   let motionBaselineVec = null;
   let motionTiltSince = null;
+  let motionDownSince = null;
   let motionState = 'up'; // 'up' | 'down'
   let motionLastEventTime = 0;
   let motionLoopId = null;
   let motionWatchdogId = null;
   let lastGravity = null; // {x,y,z}
   let gotAnyMotionData = false;
+  let lastJostleTime = 0;
+  let jostledDuringEvent = false;
 
   // "deep" tilt (degrees away from standing baseline) required to count as
   // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
@@ -1056,11 +1068,28 @@
   const MIN_TILT_MS = 350;
   const MOTION_COOLDOWN_MS = 900;
 
+  // A real Sujud is the phone staying in your pocket while your body bows —
+  // a slow, smooth rotation, so total acceleration stays close to a steady
+  // 9.8 m/s² throughout. Pulling the phone OUT of your pocket to check the
+  // screen involves real hand motion (grabbing, lifting, putting it back),
+  // which spikes the acceleration magnitude well away from 9.8 at some point
+  // during the tilt. We use that spike to tell "you bowed" apart from "you
+  // took the phone out" and skip counting the latter. A tilt held far longer
+  // than a normal Sujud (you're reading the screen) is also skipped, even if
+  // no spike was caught, as a second safety net.
+  const MOTION_JOSTLE_MAG_DELTA = 4; // m/s² away from 9.8 counts as handling, not bowing
+  const MAX_SUJUD_DOWN_MS = 9000;
+
   function onDeviceMotion(e){
     const g = e.accelerationIncludingGravity;
     if(!g || g.x===null || g.y===null || g.z===null) return;
     lastGravity = { x:g.x, y:g.y, z:g.z };
     gotAnyMotionData = true;
+    const mag = Math.sqrt(g.x*g.x + g.y*g.y + g.z*g.z);
+    if(Math.abs(mag - 9.8) > MOTION_JOSTLE_MAG_DELTA){
+      lastJostleTime = Date.now();
+      if(motionState==='down' || motionTiltSince!==null) jostledDuringEvent = true;
+    }
   }
 
   function vecAngleDeg(a, b){
@@ -1150,19 +1179,27 @@
 
     if(delta > threshold){
       if(motionState==='up'){
-        if(motionTiltSince===null) motionTiltSince = now;
+        if(motionTiltSince===null){ motionTiltSince = now; jostledDuringEvent = false; }
         if(now - motionTiltSince >= MIN_TILT_MS){
           motionState = 'down';
+          motionDownSince = motionTiltSince;
           motionStatus.textContent = 'Deep bow detected — in Sujud…';
           motionStatus.classList.add('dark');
         }
+      } else if(motionState==='down' && now - motionDownSince > MAX_SUJUD_DOWN_MS){
+        // held "down" far longer than a real Sujud — likely holding/reading
+        // the phone rather than bowing. Flag it so it won't be counted.
+        jostledDuringEvent = true;
       }
     } else {
       motionTiltSince = null;
       if(motionState==='down'){
         motionState = 'up';
         motionStatus.classList.remove('dark');
-        if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
+        if(jostledDuringEvent){
+          jostledDuringEvent = false;
+          motionStatus.textContent = 'Movement ignored (looked like handling, not a bow) · watching…';
+        } else if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
           motionLastEventTime = now;
           motionStatus.textContent = 'Sujud counted · watching…';
           addCount();
