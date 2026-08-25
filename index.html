@@ -1142,7 +1142,7 @@
 
   function motionTick(){
     if(!motionActive || lastGravity===null) return;
-    if(motionBaselineVec===null){ motionBaselineVec = { ...lastGravity }; return; }
+    if(motionBaselineVec===null) return; // still counting down to calibration — don't detect yet
     const delta = vecAngleDeg(lastGravity, motionBaselineVec);
     const threshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
     tiltFill.style.width = Math.max(0, Math.min(100, (delta/threshold)*100)) + '%';
