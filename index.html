@@ -16,19 +16,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#121212;
-    --bg-2:#0A0A0A;
-    --panel:#1D1D1D;
-    --panel-2:#262626;
-    --line: rgba(255,255,255,0.09);
-    --line-strong: rgba(255,255,255,0.20);
-    --gold:#D8D8D8;
-    --gold-bright:#F2F2F2;
-    --teal:#9A9A9A;
-    --terracotta:#4A4A4A;
+    --bg:#0D1526;
+    --bg-2:#0A0F1D;
+    --panel:#151F37;
+    --panel-2:#1B2A48;
+    --line: rgba(212,166,87,0.10);
+    --line-strong: rgba(212,166,87,0.22);
+    --gold:#D4A657;
+    --gold-bright:#E8C377;
+    --teal:#4FA89B;
+    --terracotta:#C2685A;
     --text:#F2EEE3;
-    --text-dim:#A8A8A8;
-    --text-faint:#6E6E6E;
+    --text-dim:#93A0BC;
+    --text-faint:#5C6580;
 
     /* spacing scale */
     --sp-1:6px; --sp-2:10px; --sp-3:16px; --sp-4:22px; --sp-5:32px;
@@ -36,15 +36,15 @@
     --r-pill:999px; --r-lg:16px; --r-md:12px; --r-sm:8px;
     /* shadows — kept subtle so accents read as refined, not glowing */
     --shadow-card: 0 10px 30px rgba(0,0,0,0.30);
-    --shadow-btn: 0 4px 14px rgba(255,255,255,0.10);
-    --shadow-btn-stop: 0 4px 14px rgba(0,0,0,0.35);
+    --shadow-btn: 0 4px 14px rgba(212,166,87,0.16);
+    --shadow-btn-stop: 0 4px 14px rgba(194,104,90,0.18);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
     background:
-      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255,255,255,0.045), transparent 60%),
-      radial-gradient(ellipse 700px 500px at 90% 100%, rgba(255,255,255,0.025), transparent 60%),
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(212,166,87,0.07), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 90% 100%, rgba(79,168,155,0.05), transparent 60%),
       var(--bg);
     color:var(--text);
     font-family:'Manrope', sans-serif;
@@ -124,8 +124,8 @@
   }
   .chip:hover{border-color:var(--line-strong); color:var(--text);}
   .chip.active{
-    background:linear-gradient(135deg, var(--gold), #A8A8A8);
-    color:#141414;
+    background:linear-gradient(135deg, var(--gold), #B9873F);
+    color:#1A1305;
     border-color:transparent;
     box-shadow:var(--shadow-btn);
   }
@@ -150,32 +150,91 @@
   }
   .custom-wrap label{font-size:13px; color:var(--text-dim); font-weight:600;}
 
-  /* mode switch */
-  .mode-switch{
-    display:flex;
-    gap:6px;
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:var(--r-md);
-    padding:5px;
+  /* wizard steps */
+  .step{ display:none; }
+  .step.active{ display:block; }
+  .step-label{
+    font-family:'JetBrains Mono';
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    text-align:center;
     margin-bottom:var(--sp-3);
   }
-  .mode-chip{
-    flex:1;
-    text-align:center;
+  .back-link{
+    display:block;
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    font-family:'Manrope';
     font-size:12px;
-    font-weight:700;
-    padding:10px 6px;
-    border-radius:var(--r-sm);
+    font-weight:600;
+    cursor:pointer;
+    padding:0;
+    margin:0 auto var(--sp-3);
+  }
+  .back-link:hover{ color:var(--gold); }
+  .track-summary{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-bottom:var(--sp-4);
+    font-size:13px;
+    color:var(--text-dim);
+    text-align:center;
+  }
+  .track-summary .change-link{
+    background:none;
+    font-family:'Manrope';
+    font-size:12px;
+    font-weight:600;
     color:var(--text-dim);
     cursor:pointer;
-    transition:background .15s ease, color .15s ease;
-    line-height:1.3;
+    padding:4px 12px;
+    border:1px solid var(--line);
+    border-radius:var(--r-pill);
   }
-  .mode-chip:hover{color:var(--text);}
-  .mode-chip.active{
-    background:linear-gradient(135deg, var(--teal), #6E6E6E);
-    color:#141414;
+  .track-summary .change-link:hover{ border-color:var(--gold); color:var(--text); }
+
+  /* mode cards (step 2) */
+  .mode-cards{
+    display:flex;
+    flex-direction:column;
+    gap:var(--sp-2);
+    margin-bottom:var(--sp-3);
+  }
+  .mode-card{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    padding:14px 16px;
+    border-radius:var(--r-lg);
+    border:1px solid var(--line);
+    background:var(--panel);
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .mode-card:hover{ border-color:var(--line-strong); }
+  .mode-card.active{
+    border-color:var(--teal);
+    background:linear-gradient(135deg, rgba(79,168,155,0.14), rgba(79,168,155,0.03));
+  }
+  .mode-card-top{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-weight:700;
+    font-size:14px;
+    color:var(--text);
+  }
+  .mode-card-icon{ font-size:18px; }
+  .mode-card-desc{
+    font-size:12px;
+    color:var(--text-dim);
+    line-height:1.5;
+    padding-left:27px;
   }
 
   /* dropdowns — give them a visible, deliberate affordance instead of the
@@ -337,12 +396,12 @@
     box-shadow: inset 0 0 34px rgba(0,0,0,0.45);
   }
   .center-plate.listening{
-    box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(255,255,255,0.28);
+    box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(212,166,87,0.35);
     animation: breathe 2.6s ease-in-out infinite;
   }
   @keyframes breathe{
-    0%,100%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(255,255,255,0.18); }
-    50%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 12px rgba(255,255,255,0); }
+    0%,100%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 0 rgba(212,166,87,0.24); }
+    50%{ box-shadow: inset 0 0 34px rgba(0,0,0,0.45), 0 0 0 12px rgba(212,166,87,0); }
   }
   .rakah-label{
     font-family:'JetBrains Mono';
@@ -379,8 +438,8 @@
     margin-top:10px;
     padding:5px 12px;
     border-radius:var(--r-pill);
-    background:rgba(255,255,255,0.06);
-    border:1px solid rgba(255,255,255,0.18);
+    background:rgba(79,168,155,0.10);
+    border:1px solid rgba(79,168,155,0.26);
     min-height:14px;
     text-align:center;
   }
@@ -434,13 +493,13 @@
   button:active{transform:scale(0.97);}
   .btn-main{
     flex:1.4;
-    background:linear-gradient(135deg, var(--gold), #A8A8A8);
-    color:#141414;
+    background:linear-gradient(135deg, var(--gold), #B9873F);
+    color:#1A1305;
     box-shadow:var(--shadow-btn);
   }
   .btn-main.stop{
-    background:linear-gradient(135deg, var(--terracotta), #2A2A2A);
-    color:#F0F0F0;
+    background:linear-gradient(135deg, var(--terracotta), #8F4438);
+    color:#FBEEE9;
     box-shadow:var(--shadow-btn-stop);
   }
   .btn-secondary{
@@ -532,54 +591,6 @@
     </div>
   </header>
 
-  <div class="selector" id="prayerSelector"></div>
-
-  <div class="mode-switch" id="modeSwitch">
-    <div class="mode-chip active" data-mode="takbir">🎙 Voice · Manual</div>
-    <div class="mode-chip" data-mode="sujud">📷 Camera · Sujud</div>
-    <div class="mode-chip" data-mode="motion">📱 Motion · Pocket</div>
-  </div>
-
-  <div class="camera-panel" id="cameraPanel" style="display:none;">
-    <div class="camera-row">
-      <button class="btn-secondary small" id="camEnableBtn">Enable Camera</button>
-      <select id="camFacing">
-        <option value="user">Front camera (phone screen‑up)</option>
-        <option value="environment">Back camera (phone screen‑down)</option>
-      </select>
-    </div>
-    <div class="camera-row">
-      <label class="cam-label">Sensitivity</label>
-      <select id="camSensitivity">
-        <option value="low">Low</option>
-        <option value="medium" selected>Medium</option>
-        <option value="high">High</option>
-      </select>
-      <button class="btn-secondary small" id="camRecalBtn">Recalibrate</button>
-    </div>
-    <div class="brightness-meter"><div class="brightness-fill" id="brightnessFill"></div></div>
-    <div class="cam-status" id="camStatus">Camera off · lay the phone screen‑up on your mat, then tap Enable Camera</div>
-    <video id="camVideo" autoplay playsinline muted style="display:none;"></video>
-    <canvas id="camCanvas" width="24" height="24" style="display:none;"></canvas>
-  </div>
-
-  <div class="camera-panel" id="motionPanel" style="display:none;">
-    <div class="camera-row">
-      <button class="btn-secondary small" id="motionEnableBtn">Enable Motion</button>
-    </div>
-    <div class="camera-row">
-      <label class="cam-label">Sensitivity</label>
-      <select id="motionSensitivity">
-        <option value="low">Low</option>
-        <option value="medium" selected>Medium</option>
-        <option value="high">High</option>
-      </select>
-      <button class="btn-secondary small" id="motionRecalBtn">Recalibrate</button>
-    </div>
-    <div class="brightness-meter"><div class="brightness-fill" id="tiltFill"></div></div>
-    <div class="cam-status" id="motionStatus">Motion off · pocket the phone upright, stand still, then tap Enable Motion</div>
-  </div>
-
   <div class="qibla-panel" id="qiblaPanel" style="display:none;">
     <div class="camera-row">
       <button class="btn-secondary small" id="qiblaEnableBtn">Enable Qibla</button>
@@ -597,34 +608,105 @@
     <div class="cam-status" id="qiblaStatus">Qibla off · tap Enable Qibla, then hold your phone flat and rotate until the Kaaba icon points to the top</div>
   </div>
 
-  <div class="ring-wrap">
-    <svg class="ring" id="beadRing" viewBox="0 0 340 340"></svg>
-    <div class="center-plate" id="centerPlate">
-      <div class="rakah-label">Rakah</div>
-      <div class="rakah-number" id="rakahNum">—</div>
-      <div class="rakah-arabic" id="rakahArabic">استعد</div>
-      <div class="rakah-of" id="rakahOf">Select a prayer</div>
-      <div class="phase-label" id="phaseLabel"></div>
-      <div class="phase-label-ar" id="phaseLabelAr"></div>
+  <div class="step active" id="stepPrayer">
+    <div class="step-label">Step 1 · Choose your prayer</div>
+    <div class="selector" id="prayerSelector"></div>
+  </div>
+
+  <div class="step" id="stepMode">
+    <button class="back-link" id="backToPrayer" type="button">← Change prayer</button>
+    <div class="step-label">Step 2 · How should it track?</div>
+    <div class="mode-cards" id="modeSwitch">
+      <div class="mode-card active" data-mode="takbir">
+        <div class="mode-card-top"><span class="mode-card-icon">🎙️</span><span>Voice · Manual</span></div>
+        <div class="mode-card-desc">Listens for "Allahu Akbar" out loud, or tap the button yourself.</div>
+      </div>
+      <div class="mode-card" data-mode="sujud">
+        <div class="mode-card-top"><span class="mode-card-icon">📷</span><span>Camera · Sujud</span></div>
+        <div class="mode-card-desc">Lay the phone screen-up on your mat — the front camera senses Sujud.</div>
+      </div>
+      <div class="mode-card" data-mode="motion">
+        <div class="mode-card-top"><span class="mode-card-icon">📱</span><span>Motion · Pocket</span></div>
+        <div class="mode-card-desc">Keep the phone in your pocket — it senses the bow of Sujud by feel.</div>
+      </div>
     </div>
   </div>
 
-  <div class="status" id="statusLine"><span class="dot"></span><span id="statusText">Tap "Start Listening" or count manually</span></div>
+  <div class="step" id="stepTrack">
+    <div class="track-summary">
+      <span id="trackSummaryText">—</span>
+      <button class="change-link" id="backToMode" type="button">Change</button>
+    </div>
 
-  <div class="controls">
-    <button class="btn-main" id="listenBtn">Start Listening</button>
-    <button class="btn-secondary" id="tapBtn">+1 Takbir</button>
-  </div>
-  <div class="row2">
-    <button class="btn-secondary" id="undoBtn">Undo last</button>
-    <button class="btn-secondary" id="resetBtn">Reset</button>
-  </div>
+    <div class="camera-panel" id="cameraPanel" style="display:none;">
+      <div class="camera-row">
+        <button class="btn-secondary small" id="camEnableBtn">Enable Camera</button>
+        <select id="camFacing">
+          <option value="user">Front camera (phone screen‑up)</option>
+          <option value="environment">Back camera (phone screen‑down)</option>
+        </select>
+      </div>
+      <div class="camera-row">
+        <label class="cam-label">Sensitivity</label>
+        <select id="camSensitivity">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+        <button class="btn-secondary small" id="camRecalBtn">Recalibrate</button>
+      </div>
+      <div class="brightness-meter"><div class="brightness-fill" id="brightnessFill"></div></div>
+      <div class="cam-status" id="camStatus">Camera off · lay the phone screen‑up on your mat, then tap Enable Camera</div>
+      <video id="camVideo" autoplay playsinline muted style="display:none;"></video>
+      <canvas id="camCanvas" width="24" height="24" style="display:none;"></canvas>
+    </div>
+
+    <div class="camera-panel" id="motionPanel" style="display:none;">
+      <div class="camera-row">
+        <button class="btn-secondary small" id="motionEnableBtn">Enable Motion</button>
+      </div>
+      <div class="camera-row">
+        <label class="cam-label">Sensitivity</label>
+        <select id="motionSensitivity">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+        <button class="btn-secondary small" id="motionRecalBtn">Recalibrate</button>
+      </div>
+      <div class="brightness-meter"><div class="brightness-fill" id="tiltFill"></div></div>
+      <div class="cam-status" id="motionStatus">Motion off · pocket the phone upright, stand still, then tap Enable Motion</div>
+    </div>
+
+    <div class="ring-wrap">
+      <svg class="ring" id="beadRing" viewBox="0 0 340 340"></svg>
+      <div class="center-plate" id="centerPlate">
+        <div class="rakah-label">Rakah</div>
+        <div class="rakah-number" id="rakahNum">—</div>
+        <div class="rakah-arabic" id="rakahArabic">استعد</div>
+        <div class="rakah-of" id="rakahOf">Select a prayer</div>
+        <div class="phase-label" id="phaseLabel"></div>
+        <div class="phase-label-ar" id="phaseLabelAr"></div>
+      </div>
+    </div>
+
+    <div class="status" id="statusLine"><span class="dot"></span><span id="statusText">Tap "Start Listening" or count manually</span></div>
+
+    <div class="controls">
+      <button class="btn-main" id="listenBtn">Start Listening</button>
+      <button class="btn-secondary" id="tapBtn">+1 Takbir</button>
+    </div>
+    <div class="row2">
+      <button class="btn-secondary" id="undoBtn">Undo last</button>
+      <button class="btn-secondary" id="resetBtn">Reset</button>
+    </div>
 
   <div class="log-panel">
     <div class="log-head"><span id="logHeadLabel">Takbir Log</span><span id="logCount">0 heard</span></div>
     <div class="log-list" id="logList">
       <div class="log-empty">No takbirs counted yet</div>
     </div>
+  </div>
   </div>
 
   <footer id="footNote">
@@ -676,12 +758,36 @@
   const logCount = document.getElementById('logCount');
   const langSel = document.getElementById('langSel');
 
+  // ---- wizard step navigation ----
+  const steps = {
+    prayer: document.getElementById('stepPrayer'),
+    mode: document.getElementById('stepMode'),
+    track: document.getElementById('stepTrack'),
+  };
+  const modeLabels = {takbir:'Voice mode', sujud:'Camera mode', motion:'Motion mode'};
+  let selectedPrayerLabel = '';
+  const trackSummaryText = document.getElementById('trackSummaryText');
+
+  function goToStep(name){
+    Object.values(steps).forEach(el=>el.classList.remove('active'));
+    steps[name].classList.add('active');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function updateTrackSummary(){
+    const rakLabel = totalRakahs===1 ? '1 rakah' : totalRakahs + ' rakahs';
+    trackSummaryText.textContent = selectedPrayerLabel + ' · ' + rakLabel + ' · ' + (modeLabels[mode] || '');
+  }
+
+  document.getElementById('backToPrayer').onclick = ()=>goToStep('prayer');
+  document.getElementById('backToMode').onclick = ()=>goToStep('mode');
+
   // ---- build prayer chips ----
   prayers.forEach(p=>{
     const chip = document.createElement('div');
     chip.className='chip';
     chip.textContent = p.label + ' · ' + p.ar;
-    chip.onclick = ()=>selectPrayer(p.rakahs, chip);
+    chip.onclick = ()=>selectPrayer(p.rakahs, chip, p.label);
     selector.appendChild(chip);
   });
   const customWrap = document.createElement('div');
@@ -690,16 +796,17 @@
   selector.appendChild(customWrap);
   document.getElementById('customInput').addEventListener('change', (e)=>{
     const n = Math.max(1, Math.min(20, parseInt(e.target.value)||2));
-    selectPrayer(n, customWrap);
+    selectPrayer(n, customWrap, 'Custom');
   });
   customWrap.addEventListener('click', (e)=>{
     if(e.target.tagName!=='INPUT'){
-      selectPrayer(parseInt(document.getElementById('customInput').value)||2, customWrap);
+      selectPrayer(parseInt(document.getElementById('customInput').value)||2, customWrap, 'Custom');
     }
   });
 
-  function selectPrayer(n, chipEl){
+  function selectPrayer(n, chipEl, label){
     totalRakahs = n;
+    selectedPrayerLabel = label;
     takbirMap = buildTakbirMap(n);
     phaseMap = buildPhaseMap(n);
     sujudMap = buildSujudMap(n);
@@ -710,6 +817,7 @@
     chipEl.classList.add('active');
     buildRing();
     renderAll();
+    goToStep('mode');
   }
 
   // ---- structure: every rak'ah has 5 takbirs on its own (Ihram/qiyam or
@@ -903,28 +1011,31 @@
   };
 
   // ---- mode switch ----
-  const modeChips = document.querySelectorAll('.mode-chip');
+  const modeChips = document.querySelectorAll('.mode-card');
   const cameraPanel = document.getElementById('cameraPanel');
   const logHeadLabel = document.getElementById('logHeadLabel');
   const motionPanel = document.getElementById('motionPanel');
   modeChips.forEach(chip=>{
     chip.onclick = ()=>{
       const newMode = chip.dataset.mode;
-      if(newMode===mode) return;
-      if(mode==='takbir' && isListening) stopListening();
-      if(mode==='sujud' && camActive) stopCamera();
-      if(mode==='motion' && motionActive) stopMotion();
-      mode = newMode;
-      modeChips.forEach(c=>c.classList.remove('active'));
-      chip.classList.add('active');
-      cameraPanel.style.display = (mode==='sujud') ? 'block' : 'none';
-      motionPanel.style.display = (mode==='motion') ? 'block' : 'none';
-      listenBtn.style.display = (mode==='takbir') ? '' : 'none';
-      statusLine.style.display = (mode==='takbir') ? '' : 'none';
-      tapBtn.textContent = (mode==='takbir') ? '+1 Takbir' : '+1 Sujud';
-      logHeadLabel.textContent = (mode==='takbir') ? 'Takbir Log' : 'Sujud Log';
-      buildRing();
-      renderAll();
+      if(newMode!==mode){
+        if(mode==='takbir' && isListening) stopListening();
+        if(mode==='sujud' && camActive) stopCamera();
+        if(mode==='motion' && motionActive) stopMotion();
+        mode = newMode;
+        modeChips.forEach(c=>c.classList.remove('active'));
+        chip.classList.add('active');
+        cameraPanel.style.display = (mode==='sujud') ? 'block' : 'none';
+        motionPanel.style.display = (mode==='motion') ? 'block' : 'none';
+        listenBtn.style.display = (mode==='takbir') ? '' : 'none';
+        statusLine.style.display = (mode==='takbir') ? '' : 'none';
+        tapBtn.textContent = (mode==='takbir') ? '+1 Takbir' : '+1 Sujud';
+        logHeadLabel.textContent = (mode==='takbir') ? 'Takbir Log' : 'Sujud Log';
+        buildRing();
+        renderAll();
+      }
+      updateTrackSummary();
+      goToStep('track');
     };
   });
 
