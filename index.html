@@ -681,7 +681,7 @@
   }
 
   function getPhase(count){
-    if(mode==='sujud'){
+    if(mode==='sujud'||mode==='motion'){
       if(count<=0) return null;
       const within = ((count-1) % 2) + 1; // 1st or 2nd sujud detected this rak'ah
       return within===1
@@ -751,8 +751,8 @@
       rakahNum.textContent='—';
       rakahArabic.textContent='جاهز';
       rakahOf.textContent = 'Ready · ' + totalRakahs + ' rakah' + (totalRakahs>1?'s':'');
-      phaseLabel.textContent = mode==='sujud' ? 'Waiting for 1st Sujud' : 'Next: Takbiratul Ihram';
-      phaseLabelAr.textContent = mode==='sujud' ? 'في انتظار السجدة الأولى' : 'التالي: تكبيرة الإحرام';
+      phaseLabel.textContent = (mode==='sujud'||mode==='motion') ? 'Waiting for 1st Sujud' : 'Next: Takbiratul Ihram';
+      phaseLabelAr.textContent = (mode==='sujud'||mode==='motion') ? 'في انتظار السجدة الأولى' : 'التالي: تكبيرة الإحرام';
     } else {
       rakahNum.textContent = r;
       rakahArabic.textContent = rakahWordAr[r] || ('الركعة ' + arabicIndic[r]);
