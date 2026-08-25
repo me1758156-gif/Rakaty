@@ -1058,6 +1058,33 @@
   // ---- speech recognition ----
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+  // Chrome/Android plays its own system tone each time speech recognition
+  // starts a session — that's not something this app generates, and there's
+  // no direct API to silence it. Keeping a silent audio stream active for
+  // the whole listening period is a known workaround that suppresses it on
+  // most devices; if it doesn't on yours, the phone's own sound settings
+  // (Sound & vibration → Other sounds) is the reliable fix.
+  let silentAudioCtx = null;
+  let silentOsc = null;
+  function startSilentKeepAlive(){
+    try{
+      silentAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const gain = silentAudioCtx.createGain();
+      gain.gain.value = 0;
+      silentOsc = silentAudioCtx.createOscillator();
+      silentOsc.frequency.value = 20;
+      silentOsc.connect(gain);
+      gain.connect(silentAudioCtx.destination);
+      silentOsc.start();
+    }catch(e){ /* not critical — recognition still works without it */ }
+  }
+  function stopSilentKeepAlive(){
+    try{
+      if(silentOsc){ silentOsc.stop(); silentOsc.disconnect(); silentOsc = null; }
+      if(silentAudioCtx){ silentAudioCtx.close(); silentAudioCtx = null; }
+    }catch(e){}
+  }
+
   function matchesTakbir(transcript){
     const t = transcript.toLowerCase();
     return t.includes('akbar') || t.includes('أكبر') || t.includes('اكبر');
@@ -1095,6 +1122,7 @@
     try{
       recognition.start();
       isListening = true;
+      startSilentKeepAlive();
       listenBtn.textContent = 'Stop Listening';
       listenBtn.classList.add('stop');
       centerPlate.classList.add('listening');
@@ -1108,6 +1136,7 @@
   function stopListening(){
     isListening = false;
     if(recognition){ try{ recognition.stop(); }catch(e){} }
+    stopSilentKeepAlive();
     listenBtn.textContent = 'Start Listening';
     listenBtn.classList.remove('stop');
     centerPlate.classList.remove('listening');
