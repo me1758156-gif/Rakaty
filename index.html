@@ -1341,8 +1341,8 @@
   // "deep" tilt (degrees away from standing baseline) required to count as
   // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
   const MOTION_SENSITIVITY_DEG = { low:70, medium:55, high:40 };
-  const MIN_TILT_MS = 350;
-  const MIN_DOWN_HOLD_MS = 700; // a genuine Sujud is held, not just passed through — a quick jostle (sitting down, a stumble, adjusting the pocket) shouldn't count
+  const MIN_TILT_MS = 250;
+  const MIN_DOWN_HOLD_MS = 250; // filters out an instant flick past the threshold (a stumble, sitting down abruptly) without punishing a normal-paced Sujud
   const MOTION_COOLDOWN_MS = 900;
   let motionDownConfirmedAt = null;
 
@@ -1461,7 +1461,7 @@
     // Low-pass filter the tilt angle so a single jumpy accelerometer
     // sample or a bit of fabric shifting in the pocket can't flip the
     // state — transitions now respond to a sustained bow.
-    smoothedTiltDelta = smoothedTiltDelta===null ? rawDelta : (smoothedTiltDelta*0.6 + rawDelta*0.4);
+    smoothedTiltDelta = smoothedTiltDelta===null ? rawDelta : (smoothedTiltDelta*0.35 + rawDelta*0.65);
     const enterThreshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
     // Exit threshold sits below entry — hysteresis, so a reading hovering
     // right at the edge can't flicker the state back and forth.
