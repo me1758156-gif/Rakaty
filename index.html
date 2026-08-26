@@ -1169,6 +1169,7 @@
   let camState = 'bright'; // 'bright' | 'dark'
   let camLastEventTime = 0;
   let camLoopId = null;
+  let smoothedRatio = null; // low-pass filtered brightness ratio, cuts per-frame sensor noise
 
   const SENSITIVITY_RATIO = { low:0.35, medium:0.5, high:0.65 };
   const MIN_DARK_MS = 300;
@@ -1197,6 +1198,7 @@
       camEnableBtn.textContent = 'Disable Camera';
       camStatus.textContent = 'Calibrating — keep the phone still and well‑lit for a second…';
       camBaseline = null;
+      smoothedRatio = null;
       setTimeout(calibrate, 600);
       camLoopId = setInterval(cameraTick, 120);
     }catch(e){
@@ -1209,6 +1211,7 @@
     if(camStream) camStream.getTracks().forEach(t=>t.stop());
     camActive = false;
     camBaseline = null;
+    smoothedRatio = null;
     camState = 'bright';
     camEnableBtn.textContent = 'Enable Camera';
     camStatus.textContent = 'Camera off · lay the phone screen‑up on your mat, then tap Enable Camera';
@@ -1217,33 +1220,62 @@
 
   function calibrate(){
     if(!camActive) return;
-    const b = sampleBrightness();
-    camBaseline = b;
-    camStatus.textContent = 'Calibrated · watching for Sujud…';
+    // Average a short burst of frames instead of one snapshot — a single
+    // frame right after camera start can be skewed by auto-exposure still
+    // settling or ordinary sensor noise.
+    const samples = [];
+    let count = 0;
+    const iv = setInterval(()=>{
+      if(!camActive){ clearInterval(iv); return; }
+      samples.push(sampleBrightness());
+      count++;
+      if(count>=4){
+        clearInterval(iv);
+        camBaseline = samples.reduce((a,b)=>a+b,0)/samples.length;
+        smoothedRatio = null;
+        camStatus.textContent = 'Calibrated · watching for Sujud…';
+      }
+    }, 100);
   }
 
   function cameraTick(){
     if(!camActive || camVideo.readyState < 2) return;
     const b = sampleBrightness();
     if(camBaseline===null){ camBaseline = b; return; }
-    const ratio = camBaseline>0 ? (b/camBaseline) : 1;
-    brightnessFill.style.width = Math.max(0, Math.min(100, ratio*100)) + '%';
+    const rawRatio = camBaseline>0 ? (b/camBaseline) : 1;
+    // Low-pass filter the per-frame ratio so a single noisy/flickery frame
+    // can't flip the state — transitions now respond to a sustained
+    // brightness change rather than a one-frame blip.
+    smoothedRatio = smoothedRatio===null ? rawRatio : (smoothedRatio*0.55 + rawRatio*0.45);
+    brightnessFill.style.width = Math.max(0, Math.min(100, smoothedRatio*100)) + '%';
 
-    const threshold = SENSITIVITY_RATIO[camSensitivity.value] ?? 0.5;
+    const enterThreshold = SENSITIVITY_RATIO[camSensitivity.value] ?? 0.5;
+    // Exit threshold sits a bit above entry — hysteresis, so a reading
+    // hovering right at the edge can't flicker the state back and forth.
+    const exitThreshold = Math.min(0.97, enterThreshold + 0.08);
     const now = Date.now();
 
-    if(ratio < threshold){
-      if(camState==='bright'){
+    if(camState==='bright'){
+      if(smoothedRatio < enterThreshold){
         if(camDarkSince===null) camDarkSince = now;
         if(now - camDarkSince >= MIN_DARK_MS){
           camState = 'dark';
           camStatus.textContent = 'Dark detected — in Sujud…';
           camStatus.classList.add('dark');
         }
+      } else {
+        camDarkSince = null;
+        // Slowly track gradual ambient-light drift (e.g. sun moving,
+        // lights dimming) while stable and bright, so a long session
+        // doesn't fall out of calibration. Frozen during Sujud below, so
+        // a dark reading never pulls the baseline down with it.
+        if(smoothedRatio > 0.92 && smoothedRatio < 1.08){
+          camBaseline = camBaseline*0.995 + b*0.005;
+        }
+        camStatus.textContent = 'Watching for Sujud…';
       }
-    } else {
-      camDarkSince = null;
-      if(camState==='dark'){
+    } else { // camState === 'dark'
+      if(smoothedRatio > exitThreshold){
         camState = 'bright';
         camStatus.classList.remove('dark');
         if(now - camLastEventTime > COOLDOWN_MS){
@@ -1253,9 +1285,8 @@
         } else {
           camStatus.textContent = 'Watching for Sujud…';
         }
-      } else {
-        camStatus.textContent = 'Watching for Sujud…';
       }
+      // else: still dark, or within the hysteresis band — keep waiting
     }
   }
 
@@ -1294,6 +1325,7 @@
   let motionWatchdogId = null;
   let lastGravity = null; // {x,y,z}
   let gotAnyMotionData = false;
+  let smoothedTiltDelta = null; // low-pass filtered tilt angle, cuts accelerometer/fabric-shift noise
 
   // "deep" tilt (degrees away from standing baseline) required to count as
   // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
@@ -1356,6 +1388,7 @@
     motionEnableBtn.textContent = 'Disable Motion';
     motionBaselineVec = null;
     lastGravity = null;
+    smoothedTiltDelta = null;
     runCalibrationCountdown();
     motionLoopId = setInterval(motionTick, 120);
     if(motionWatchdogId) clearTimeout(motionWatchdogId);
@@ -1373,6 +1406,7 @@
     if(motionPrepIntervalId){ clearInterval(motionPrepIntervalId); motionPrepIntervalId = null; }
     motionActive = false;
     motionBaselineVec = null;
+    smoothedTiltDelta = null;
     motionState = 'up';
     motionEnableBtn.textContent = 'Enable Motion';
     motionStatus.textContent = 'Motion off · pocket the phone upright, stand still, then tap Enable Motion';
@@ -1381,30 +1415,70 @@
 
   function calibrateMotion(){
     if(!motionActive || lastGravity===null) return;
-    motionBaselineVec = { ...lastGravity };
-    motionStatus.textContent = 'Calibrated · watching for Sujud…';
+    // Average a short burst of readings instead of one instantaneous
+    // sample — a stray jitter right at the calibration moment would
+    // otherwise skew the whole session's baseline.
+    const samples = [];
+    let count = 0;
+    const iv = setInterval(()=>{
+      if(!motionActive){ clearInterval(iv); return; }
+      if(lastGravity) samples.push({ ...lastGravity });
+      count++;
+      if(count>=5){
+        clearInterval(iv);
+        if(samples.length){
+          motionBaselineVec = {
+            x: samples.reduce((a,s)=>a+s.x,0)/samples.length,
+            y: samples.reduce((a,s)=>a+s.y,0)/samples.length,
+            z: samples.reduce((a,s)=>a+s.z,0)/samples.length
+          };
+        }
+        smoothedTiltDelta = null;
+        motionStatus.textContent = 'Calibrated · watching for Sujud…';
+      }
+    }, 100);
   }
 
   function motionTick(){
     if(!motionActive || lastGravity===null) return;
     if(motionBaselineVec===null) return; // still counting down to calibration — don't detect yet
-    const delta = vecAngleDeg(lastGravity, motionBaselineVec);
-    const threshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
-    tiltFill.style.width = Math.max(0, Math.min(100, (delta/threshold)*100)) + '%';
+    const rawDelta = vecAngleDeg(lastGravity, motionBaselineVec);
+    // Low-pass filter the tilt angle so a single jumpy accelerometer
+    // sample or a bit of fabric shifting in the pocket can't flip the
+    // state — transitions now respond to a sustained bow.
+    smoothedTiltDelta = smoothedTiltDelta===null ? rawDelta : (smoothedTiltDelta*0.6 + rawDelta*0.4);
+    const enterThreshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
+    // Exit threshold sits below entry — hysteresis, so a reading hovering
+    // right at the edge can't flicker the state back and forth.
+    const exitThreshold = enterThreshold * 0.7;
+    tiltFill.style.width = Math.max(0, Math.min(100, (smoothedTiltDelta/enterThreshold)*100)) + '%';
     const now = Date.now();
 
-    if(delta > threshold){
-      if(motionState==='up'){
+    if(motionState==='up'){
+      if(smoothedTiltDelta > enterThreshold){
         if(motionTiltSince===null) motionTiltSince = now;
         if(now - motionTiltSince >= MIN_TILT_MS){
           motionState = 'down';
           motionStatus.textContent = 'Deep bow detected — in Sujud…';
           motionStatus.classList.add('dark');
         }
+      } else {
+        motionTiltSince = null;
+        // Slowly track baseline drift (phone settling further into the
+        // pocket over a long session) while standing still. Frozen during
+        // an actual Sujud below, so a bow never pulls the baseline toward
+        // itself.
+        if(smoothedTiltDelta < enterThreshold*0.3){
+          motionBaselineVec = {
+            x: motionBaselineVec.x*0.995 + lastGravity.x*0.005,
+            y: motionBaselineVec.y*0.995 + lastGravity.y*0.005,
+            z: motionBaselineVec.z*0.995 + lastGravity.z*0.005
+          };
+        }
+        motionStatus.textContent = 'Watching for Sujud…';
       }
-    } else {
-      motionTiltSince = null;
-      if(motionState==='down'){
+    } else { // motionState === 'down'
+      if(smoothedTiltDelta < exitThreshold){
         motionState = 'up';
         motionStatus.classList.remove('dark');
         if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
@@ -1414,9 +1488,8 @@
         } else {
           motionStatus.textContent = 'Watching for Sujud…';
         }
-      } else {
-        motionStatus.textContent = 'Watching for Sujud…';
       }
+      // else: still down, or within the hysteresis band — keep waiting
     }
   }
 
