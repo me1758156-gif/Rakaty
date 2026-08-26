@@ -1173,7 +1173,9 @@
 
   const SENSITIVITY_RATIO = { low:0.35, medium:0.5, high:0.65 };
   const MIN_DARK_MS = 300;
+  const MIN_DARK_HOLD_MS = 700; // a genuine Sujud is held, not just passed through — a brief cover-and-uncover (hand passing over, adjusting the mat) shouldn't count
   const COOLDOWN_MS = 900;
+  let camDarkConfirmedAt = null;
 
   function sampleBrightness(){
     camCtx.drawImage(camVideo, 0, 0, camCanvas.width, camCanvas.height);
@@ -1199,6 +1201,7 @@
       camStatus.textContent = 'Calibrating — keep the phone still and well‑lit for a second…';
       camBaseline = null;
       smoothedRatio = null;
+      camDarkConfirmedAt = null;
       setTimeout(calibrate, 600);
       camLoopId = setInterval(cameraTick, 120);
     }catch(e){
@@ -1212,6 +1215,7 @@
     camActive = false;
     camBaseline = null;
     smoothedRatio = null;
+    camDarkConfirmedAt = null;
     camState = 'bright';
     camEnableBtn.textContent = 'Enable Camera';
     camStatus.textContent = 'Camera off · lay the phone screen‑up on your mat, then tap Enable Camera';
@@ -1260,6 +1264,7 @@
         if(camDarkSince===null) camDarkSince = now;
         if(now - camDarkSince >= MIN_DARK_MS){
           camState = 'dark';
+          camDarkConfirmedAt = now;
           camStatus.textContent = 'Dark detected — in Sujud…';
           camStatus.classList.add('dark');
         }
@@ -1276,9 +1281,15 @@
       }
     } else { // camState === 'dark'
       if(smoothedRatio > exitThreshold){
+        const heldLongEnough = camDarkConfirmedAt!==null && (now - camDarkConfirmedAt) >= MIN_DARK_HOLD_MS;
         camState = 'bright';
         camStatus.classList.remove('dark');
-        if(now - camLastEventTime > COOLDOWN_MS){
+        if(!heldLongEnough){
+          // Too brief to be a real Sujud (hand passing over the camera,
+          // bumping the phone) — don't count it, and don't apply the
+          // cooldown either so a genuine Sujud right after isn't missed.
+          camStatus.textContent = 'Watching for Sujud…';
+        } else if(now - camLastEventTime > COOLDOWN_MS){
           camLastEventTime = now;
           camStatus.textContent = 'Sujud counted · watching…';
           addCount();
@@ -1331,7 +1342,9 @@
   // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
   const MOTION_SENSITIVITY_DEG = { low:70, medium:55, high:40 };
   const MIN_TILT_MS = 350;
+  const MIN_DOWN_HOLD_MS = 700; // a genuine Sujud is held, not just passed through — a quick jostle (sitting down, a stumble, adjusting the pocket) shouldn't count
   const MOTION_COOLDOWN_MS = 900;
+  let motionDownConfirmedAt = null;
 
   function onDeviceMotion(e){
     const g = e.accelerationIncludingGravity;
@@ -1389,6 +1402,7 @@
     motionBaselineVec = null;
     lastGravity = null;
     smoothedTiltDelta = null;
+    motionDownConfirmedAt = null;
     runCalibrationCountdown();
     motionLoopId = setInterval(motionTick, 120);
     if(motionWatchdogId) clearTimeout(motionWatchdogId);
@@ -1407,6 +1421,7 @@
     motionActive = false;
     motionBaselineVec = null;
     smoothedTiltDelta = null;
+    motionDownConfirmedAt = null;
     motionState = 'up';
     motionEnableBtn.textContent = 'Enable Motion';
     motionStatus.textContent = 'Motion off · pocket the phone upright, stand still, then tap Enable Motion';
@@ -1459,6 +1474,7 @@
         if(motionTiltSince===null) motionTiltSince = now;
         if(now - motionTiltSince >= MIN_TILT_MS){
           motionState = 'down';
+          motionDownConfirmedAt = now;
           motionStatus.textContent = 'Deep bow detected — in Sujud…';
           motionStatus.classList.add('dark');
         }
@@ -1479,9 +1495,15 @@
       }
     } else { // motionState === 'down'
       if(smoothedTiltDelta < exitThreshold){
+        const heldLongEnough = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MIN_DOWN_HOLD_MS;
         motionState = 'up';
         motionStatus.classList.remove('dark');
-        if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
+        if(!heldLongEnough){
+          // Too brief to be a real Sujud (a stumble, sitting down abruptly,
+          // adjusting the phone) — don't count it, and skip the cooldown
+          // too so a genuine Sujud right after isn't missed.
+          motionStatus.textContent = 'Watching for Sujud…';
+        } else if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
           motionLastEventTime = now;
           motionStatus.textContent = 'Sujud counted · watching…';
           addCount();
