@@ -659,10 +659,17 @@
           <option value="low">Low</option>
           <option value="medium" selected>Medium</option>
           <option value="high">High</option>
+          <option value="custom" id="customSensitivityOption" style="display:none;">Custom (tested)</option>
         </select>
         <button class="btn-secondary small" id="motionRecalBtn">Recalibrate</button>
       </div>
-      <div class="brightness-meter"><div class="brightness-fill" id="tiltFill"></div></div>
+      <div class="camera-row">
+        <button class="btn-secondary small" id="motionTestBtn">Test My Sujud</button>
+      </div>
+      <div class="camera-row" style="align-items:center;">
+        <div class="brightness-meter" style="flex:1;"><div class="brightness-fill" id="tiltFill"></div></div>
+        <span id="tiltDegree" style="font-size:12px;opacity:.7;margin-left:8px;min-width:34px;text-align:right;">0°</span>
+      </div>
       <div class="cam-status" id="motionStatus">Motion off · pocket the phone upright, stand still, then tap Enable Motion</div>
     </div>
 
@@ -1282,9 +1289,38 @@
   // and retune Sensitivity or Calibrate again if it's over/under-counting.
   const motionEnableBtn = document.getElementById('motionEnableBtn');
   const motionRecalBtn = document.getElementById('motionRecalBtn');
+  const motionTestBtn = document.getElementById('motionTestBtn');
   const motionSensitivity = document.getElementById('motionSensitivity');
   const motionStatus = document.getElementById('motionStatus');
   const tiltFill = document.getElementById('tiltFill');
+  const tiltDegree = document.getElementById('tiltDegree');
+  const customSensitivityOption = document.getElementById('customSensitivityOption');
+
+  // A threshold measured from the user's own body/pocket via testMotionSensitivity()
+  // overrides the low/medium/high presets when set. Persisted so it survives
+  // reopening the app.
+  let customMotionThreshold = null;
+  try{
+    const saved = localStorage.getItem('rakah_motion_custom_threshold');
+    if(saved !== null){
+      customMotionThreshold = parseFloat(saved);
+      customSensitivityOption.style.display = '';
+      customSensitivityOption.textContent = 'Custom (' + Math.round(customMotionThreshold) + '°)';
+      motionSensitivity.value = 'custom';
+    }
+  }catch(e){}
+
+  function currentMotionThreshold(){
+    if(motionSensitivity.value === 'custom' && customMotionThreshold !== null) return customMotionThreshold;
+    return MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
+  }
+
+  motionSensitivity.onchange = ()=>{
+    if(motionSensitivity.value !== 'custom'){
+      customMotionThreshold = null;
+      try{ localStorage.removeItem('rakah_motion_custom_threshold'); }catch(e){}
+    }
+  };
 
   let motionBaselineVec = null;
   let motionTiltSince = null;
@@ -1389,8 +1425,9 @@
     if(!motionActive || lastGravity===null) return;
     if(motionBaselineVec===null) return; // still counting down to calibration — don't detect yet
     const delta = vecAngleDeg(lastGravity, motionBaselineVec);
-    const threshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
+    const threshold = currentMotionThreshold();
     tiltFill.style.width = Math.max(0, Math.min(100, (delta/threshold)*100)) + '%';
+    tiltDegree.textContent = Math.round(delta) + '°';
     const now = Date.now();
 
     if(delta > threshold){
@@ -1425,6 +1462,71 @@
     if(!motionActive){ flashStatus('Enable motion first'); return; }
     runCalibrationCountdown();
   };
+
+  // Guided test: has the user actually go into Sujud and stand back up,
+  // measures the real peak tilt angle for each, and sets a threshold
+  // in between — tuned to their body and exact pocket placement instead
+  // of a generic Low/Medium/High guess.
+  function motionCountdown(seconds, label){
+    return new Promise((resolve)=>{
+      let remaining = seconds;
+      motionStatus.textContent = label + ' ' + remaining + '…';
+      const iv = setInterval(()=>{
+        remaining -= 1;
+        if(remaining <= 0){ clearInterval(iv); resolve(); }
+        else motionStatus.textContent = label + ' ' + remaining + '…';
+      }, 1000);
+    });
+  }
+  function motionSamplePeak(ms){
+    return new Promise((resolve)=>{
+      let peak = 0;
+      const start = Date.now();
+      const iv = setInterval(()=>{
+        if(lastGravity){
+          const d = vecAngleDeg(lastGravity, motionBaselineVec);
+          if(d > peak) peak = d;
+          tiltDegree.textContent = Math.round(d) + '°';
+        }
+        if(Date.now() - start >= ms){ clearInterval(iv); resolve(peak); }
+      }, 80);
+    });
+  }
+  async function testMotionSensitivity(){
+    if(!motionActive || motionBaselineVec===null){
+      motionStatus.textContent = 'Enable Motion and wait for calibration to finish first';
+      return;
+    }
+    motionTestBtn.disabled = true;
+    motionEnableBtn.disabled = true;
+    motionRecalBtn.disabled = true;
+    try{
+      await motionCountdown(3, 'Get ready — go into Sujud in');
+      motionStatus.textContent = 'Go into Sujud now and hold it…';
+      const sujudPeak = await motionSamplePeak(2500);
+
+      await motionCountdown(2, 'Now stand back up — testing normal movement in');
+      motionStatus.textContent = 'Move naturally, adjust your stance…';
+      const standPeak = await motionSamplePeak(2500);
+
+      if(sujudPeak - standPeak < 15){
+        motionStatus.textContent = 'Test inconclusive (Sujud ' + Math.round(sujudPeak) + '°, standing ' + Math.round(standPeak) + '°) — make sure the phone is snug in your pocket and try again.';
+        return;
+      }
+      const threshold = Math.round(standPeak + (sujudPeak - standPeak) * 0.4);
+      customMotionThreshold = threshold;
+      try{ localStorage.setItem('rakah_motion_custom_threshold', String(threshold)); }catch(e){}
+      customSensitivityOption.style.display = '';
+      customSensitivityOption.textContent = 'Custom (' + threshold + '°)';
+      motionSensitivity.value = 'custom';
+      motionStatus.textContent = 'Sujud reached ~' + Math.round(sujudPeak) + '°, normal movement stayed under ~' + Math.round(standPeak) + '°. Threshold set to ' + threshold + '° — watching for Sujud…';
+    } finally {
+      motionTestBtn.disabled = false;
+      motionEnableBtn.disabled = false;
+      motionRecalBtn.disabled = false;
+    }
+  }
+  motionTestBtn.onclick = testMotionSensitivity;
 
   // ---- Qibla compass ----
   // Bearing to the Kaaba via great-circle initial bearing formula, then
