@@ -666,7 +666,8 @@
       <div class="camera-row" id="motionCalRow" style="flex-wrap:wrap; gap:6px;">
         <button class="btn-secondary small" id="calStandBtn">Calibrate Standing</button>
         <button class="btn-secondary small" id="calSujudBtn">Calibrate Sujud</button>
-        <button class="btn-secondary small" id="calSitBtn">Calibrate Sitting</button>
+        <button class="btn-secondary small" id="calJalsaBtn">Calibrate Sit Between Sujud</button>
+        <button class="btn-secondary small" id="calSitBtn">Calibrate Tashahhud Sitting</button>
       </div>
       <div class="cam-status" id="motionCalStatus" style="font-size:0.85em; opacity:0.85;">Personal calibration: not set for any position yet</div>
       <div class="brightness-meter"><div class="brightness-fill" id="tiltFill"></div></div>
@@ -1334,6 +1335,7 @@
   const motionSensitivity = document.getElementById('motionSensitivity');
   const calStandBtn = document.getElementById('calStandBtn');
   const calSujudBtn = document.getElementById('calSujudBtn');
+  const calJalsaBtn = document.getElementById('calJalsaBtn');
   const calSitBtn = document.getElementById('calSitBtn');
   const motionCalStatus = document.getElementById('motionCalStatus');
   const motionStatus = document.getElementById('motionStatus');
@@ -1479,25 +1481,33 @@
     // state — transitions now respond to a sustained bow.
     smoothedTiltDelta = smoothedTiltDelta===null ? rawDelta : (smoothedTiltDelta*0.35 + rawDelta*0.65);
     let enterThreshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
+    let exitThreshold = enterThreshold * 0.7;
     if(motionSensitivity.value === 'custom'){
       const p = loadPositionProfile();
+      // The brief sit between the two Sujud (jalsa) and the longer
+      // Tashahhud sit can both tilt the phone nearly as much as Sujud
+      // itself — whichever of the two sits tilts MORE is the one that
+      // decides both thresholds, since it's the closer call.
+      const closestSit = [p.jalsa, p.sitting].filter(v=>v!=null).reduce((a,b)=> (a==null || b>a) ? b : a, null);
       if(p.sujud!=null && p.standing!=null){
-        if(p.sitting!=null && p.sitting > p.standing){
-          // Sitting tilts almost as much as Sujud for this phone placement —
-          // set the entry threshold just above sitting's angle instead of
-          // splitting the full standing-to-Sujud range, so Tashahhud can't
-          // cross it. (The hold-duration check further below is what tells
-          // a brief real Sujud apart from a much longer sit, in case the
-          // two angles end up very close.)
-          enterThreshold = p.sitting + Math.max(3, (p.sujud - p.sitting) * 0.25);
+        if(closestSit!=null && closestSit > p.standing){
+          // Set entry just above the highest-tilting sit, so no sit —
+          // brief or long — can cross into Sujud territory on its own.
+          enterThreshold = closestSit + Math.max(3, (p.sujud - closestSit) * 0.25);
+          // Exit needs to sit AT or just below the highest-tilting sit's
+          // own angle (not a fixed 70% of entry) — otherwise, if jalsa is
+          // close to Sujud, standing up only as far as jalsa would never
+          // dip low enough to register as "up", and the two Sujud of a
+          // rak'ah would be read as one continuous bow.
+          exitThreshold = closestSit - Math.max(2, (closestSit - p.standing) * 0.1);
         } else {
           enterThreshold = p.standing + (p.sujud - p.standing) * 0.5;
+          exitThreshold = enterThreshold * 0.7;
         }
       }
     }
     // Exit threshold sits below entry — hysteresis, so a reading hovering
     // right at the edge can't flicker the state back and forth.
-    const exitThreshold = enterThreshold * 0.7;
     tiltFill.style.width = Math.max(0, Math.min(100, (smoothedTiltDelta/enterThreshold)*100)) + '%';
     const now = Date.now();
 
@@ -1590,7 +1600,8 @@
     const parts = [];
     parts.push('Standing: ' + (p.standing!=null ? Math.round(p.standing)+'°' : 'not set'));
     parts.push('Sujud: ' + (p.sujud!=null ? Math.round(p.sujud)+'°' : 'not set'));
-    parts.push('Sitting: ' + (p.sitting!=null ? Math.round(p.sitting)+'°' : 'not set'));
+    parts.push('Sit-between: ' + (p.jalsa!=null ? Math.round(p.jalsa)+'°' : 'not set'));
+    parts.push('Tashahhud: ' + (p.sitting!=null ? Math.round(p.sitting)+'°' : 'not set'));
     motionCalStatus.textContent = parts.join(' · ');
   }
   refreshCalStatus();
@@ -1656,6 +1667,7 @@
   }
   calStandBtn.onclick = ()=> runPositionCapture('standing', 'standing', motionCalStatus);
   calSujudBtn.onclick = ()=> runPositionCapture('Sujud', 'sujud', motionCalStatus);
+  calJalsaBtn.onclick = ()=> runPositionCapture('the brief sit between the two Sujud', 'jalsa', motionCalStatus);
   calSitBtn.onclick = ()=> runPositionCapture('sitting (Tashahhud)', 'sitting', motionCalStatus);
 
   // ---- Qibla compass ----
