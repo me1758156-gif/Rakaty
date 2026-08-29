@@ -1351,6 +1351,7 @@
   let lastGravity = null; // {x,y,z}
   let gotAnyMotionData = false;
   let smoothedTiltDelta = null; // low-pass filtered tilt angle, cuts accelerometer/fabric-shift noise
+  let smoothedGravityVec = null; // low-pass filtered full gravity vector, used by the direction-aware posture classifier
 
   // "deep" tilt (degrees away from standing baseline) required to count as
   // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
@@ -1418,6 +1419,7 @@
     motionCalibratedVec = null;
     lastGravity = null;
     smoothedTiltDelta = null;
+    smoothedGravityVec = null;
     motionDownConfirmedAt = null;
     runCalibrationCountdown();
     motionLoopId = setInterval(motionTick, 120);
@@ -1438,6 +1440,7 @@
     motionBaselineVec = null;
     motionCalibratedVec = null;
     smoothedTiltDelta = null;
+    smoothedGravityVec = null;
     motionDownConfirmedAt = null;
     motionState = 'up';
     motionEnableBtn.textContent = 'Enable Motion';
@@ -1472,47 +1475,79 @@
     }, 100);
   }
 
+  // Direction-aware classifier: rather than one tilt angle, compares the
+  // live (smoothed) gravity vector against each calibrated posture's full
+  // vector and picks whichever is closest. This is what lets Sujud and a
+  // sit be told apart even when they reach a similar total tilt — Sujud
+  // rotates the phone forward while staying closer to vertical, sitting
+  // rotates it toward horizontal against the leg, and that's a difference
+  // in direction, not just amount, which a single angle-from-standing
+  // number can't see but comparing full vectors can.
+  function nearestPosture(liveVec, p){
+    const candidates = [
+      {name:'standing', vec:p.standingVec},
+      {name:'sujud', vec:p.sujudVec},
+      {name:'jalsa', vec:p.jalsaVec},
+      {name:'sitting', vec:p.sittingVec}
+    ].filter(c => c.vec != null);
+    if(candidates.length < 2) return null;
+    let best = null, bestDist = Infinity;
+    for(const c of candidates){
+      const d = vecAngleDeg(liveVec, c.vec);
+      if(d < bestDist){ bestDist = d; best = c.name; }
+    }
+    return best;
+  }
+
   function motionTick(){
     if(!motionActive || lastGravity===null) return;
     if(motionBaselineVec===null) return; // still counting down to calibration — don't detect yet
+
+    // Smooth the raw vector itself (not just an angle) so classification
+    // against calibrated postures isn't thrown off by single jittery
+    // samples, while still responding to a real, sustained change.
+    if(smoothedGravityVec===null){
+      smoothedGravityVec = { x:lastGravity.x, y:lastGravity.y, z:lastGravity.z };
+    } else {
+      smoothedGravityVec = {
+        x: smoothedGravityVec.x*0.35 + lastGravity.x*0.65,
+        y: smoothedGravityVec.y*0.35 + lastGravity.y*0.65,
+        z: smoothedGravityVec.z*0.35 + lastGravity.z*0.65
+      };
+    }
+
     const rawDelta = vecAngleDeg(lastGravity, motionBaselineVec);
-    // Low-pass filter the tilt angle so a single jumpy accelerometer
-    // sample or a bit of fabric shifting in the pocket can't flip the
-    // state — transitions now respond to a sustained bow.
     smoothedTiltDelta = smoothedTiltDelta===null ? rawDelta : (smoothedTiltDelta*0.35 + rawDelta*0.65);
     let enterThreshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
     let exitThreshold = enterThreshold * 0.7;
+    let useDirection = false;
+    let profile = null;
     if(motionSensitivity.value === 'custom'){
       const p = loadPositionProfile();
-      // The brief sit between the two Sujud (jalsa) and the longer
-      // Tashahhud sit can both tilt the phone nearly as much as Sujud
-      // itself — whichever of the two sits tilts MORE is the one that
-      // decides both thresholds, since it's the closer call.
+      profile = p;
       const closestSit = [p.jalsa, p.sitting].filter(v=>v!=null).reduce((a,b)=> (a==null || b>a) ? b : a, null);
       if(p.sujud!=null && p.standing!=null){
         if(closestSit!=null && closestSit > p.standing){
-          // Set entry just above the highest-tilting sit, so no sit —
-          // brief or long — can cross into Sujud territory on its own.
           enterThreshold = closestSit + Math.max(3, (p.sujud - closestSit) * 0.25);
-          // Exit needs to sit AT or just below the highest-tilting sit's
-          // own angle (not a fixed 70% of entry) — otherwise, if jalsa is
-          // close to Sujud, standing up only as far as jalsa would never
-          // dip low enough to register as "up", and the two Sujud of a
-          // rak'ah would be read as one continuous bow.
           exitThreshold = closestSit - Math.max(2, (closestSit - p.standing) * 0.1);
         } else {
           enterThreshold = p.standing + (p.sujud - p.standing) * 0.5;
           exitThreshold = enterThreshold * 0.7;
         }
       }
+      // If enough postures were calibrated with full direction data, use
+      // the nearest-posture classifier as the real decision-maker — angle
+      // thresholds above only drive the progress bar in that case.
+      if(p.sujudVec!=null && (p.standingVec!=null)) useDirection = true;
     }
-    // Exit threshold sits below entry — hysteresis, so a reading hovering
-    // right at the edge can't flicker the state back and forth.
     tiltFill.style.width = Math.max(0, Math.min(100, (smoothedTiltDelta/enterThreshold)*100)) + '%';
     const now = Date.now();
+    const nearest = useDirection ? nearestPosture(smoothedGravityVec, profile) : null;
+    const isSujudNow = useDirection ? (nearest === 'sujud') : (smoothedTiltDelta > enterThreshold);
+    const isUpNow = useDirection ? (nearest !== 'sujud') : (smoothedTiltDelta < exitThreshold);
 
     if(motionState==='up'){
-      if(smoothedTiltDelta > enterThreshold){
+      if(isSujudNow){
         if(motionTiltSince===null) motionTiltSince = now;
         if(now - motionTiltSince >= MIN_TILT_MS){
           motionState = 'down';
@@ -1553,7 +1588,7 @@
         motionState = 'up';
         motionStatus.classList.remove('dark');
         motionStatus.textContent = 'Watching for Sujud…';
-      } else if(smoothedTiltDelta < exitThreshold){
+      } else if(isUpNow){
         const heldLongEnough = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MIN_DOWN_HOLD_MS;
         motionState = 'up';
         motionStatus.classList.remove('dark');
@@ -1617,6 +1652,11 @@
       return true;
     }catch(e){ return false; }
   }
+  function avgVec(samples){
+    const n = samples.length;
+    const s = samples.reduce((a,v)=>({x:a.x+v.x, y:a.y+v.y, z:a.z+v.z}), {x:0,y:0,z:0});
+    return { x:s.x/n, y:s.y/n, z:s.z/n };
+  }
   function runPositionCapture(label, key, statusEl){
     if(calBusy){ return; }
     calBusy = true;
@@ -1640,23 +1680,30 @@
         }
         clearInterval(iv);
         // Sample for ~1 second so a single jitter doesn't skew the result.
+        // We store the full gravity vector (not just an angle) because
+        // Sujud and sitting can land at a similar total tilt but get
+        // there by rotating in different directions (forward bow vs.
+        // sideways against the leg) — the raw x/y/z is what preserves
+        // that difference for later matching.
         const samples = [];
         let count = 0;
-        const REF = { x:0, y:0, z:-9.81 }; // reference "flat" vector — angle is measured against straight-down gravity, consistent regardless of standing baseline drift
         const sampleIv = setInterval(()=>{
-          if(lastGravity) samples.push(vecAngleDeg(lastGravity, REF));
+          if(lastGravity) samples.push({x:lastGravity.x, y:lastGravity.y, z:lastGravity.z});
           count++;
           if(count >= 8){
             clearInterval(sampleIv);
             if(listening){ window.removeEventListener('devicemotion', handler); listening = false; }
             calBusy = false;
             if(samples.length){
-              const avg = samples.reduce((a,b)=>a+b,0)/samples.length;
+              const vec = avgVec(samples);
+              const REF = { x:0, y:0, z:-9.81 };
+              const angle = vecAngleDeg(vec, REF);
               const p = loadPositionProfile();
-              p[key] = avg;
+              p[key] = angle;              // kept for the on-screen ° display
+              p[key + 'Vec'] = vec;        // full direction — used for real detection
               savePositionProfile(p);
               refreshCalStatus();
-              statusEl.textContent = label + ' captured: ' + Math.round(avg) + '° · take the phone out when ready';
+              statusEl.textContent = label + ' captured: ' + Math.round(angle) + '° · take the phone out when ready';
             } else {
               statusEl.textContent = 'No motion data received — try again';
             }
