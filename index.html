@@ -659,9 +659,16 @@
           <option value="low">Low</option>
           <option value="medium" selected>Medium</option>
           <option value="high">High</option>
+          <option value="custom">Custom (calibrated)</option>
         </select>
         <button class="btn-secondary small" id="motionRecalBtn">Recalibrate</button>
       </div>
+      <div class="camera-row" id="motionCalRow" style="flex-wrap:wrap; gap:6px;">
+        <button class="btn-secondary small" id="calStandBtn">Calibrate Standing</button>
+        <button class="btn-secondary small" id="calSujudBtn">Calibrate Sujud</button>
+        <button class="btn-secondary small" id="calSitBtn">Calibrate Sitting</button>
+      </div>
+      <div class="cam-status" id="motionCalStatus" style="font-size:0.85em; opacity:0.85;">Personal calibration: not set for any position yet</div>
       <div class="brightness-meter"><div class="brightness-fill" id="tiltFill"></div></div>
       <div class="cam-status" id="motionStatus">Motion off · pocket the phone upright, stand still, then tap Enable Motion</div>
     </div>
@@ -1325,6 +1332,10 @@
   const motionEnableBtn = document.getElementById('motionEnableBtn');
   const motionRecalBtn = document.getElementById('motionRecalBtn');
   const motionSensitivity = document.getElementById('motionSensitivity');
+  const calStandBtn = document.getElementById('calStandBtn');
+  const calSujudBtn = document.getElementById('calSujudBtn');
+  const calSitBtn = document.getElementById('calSitBtn');
+  const motionCalStatus = document.getElementById('motionCalStatus');
   const motionStatus = document.getElementById('motionStatus');
   const tiltFill = document.getElementById('tiltFill');
 
@@ -1344,6 +1355,7 @@
   const MOTION_SENSITIVITY_DEG = { low:70, medium:55, high:40 };
   const MIN_TILT_MS = 250;
   const MIN_DOWN_HOLD_MS = 250; // filters out an instant flick past the threshold (a stumble, sitting down abruptly) without punishing a normal-paced Sujud
+  const MAX_DOWN_HOLD_MS = 12000; // a real Sujud doesn't last this long — beyond this it's almost certainly sitting (Tashahhud), so stop waiting and don't count it
   const MOTION_COOLDOWN_MS = 900;
   let motionDownConfirmedAt = null;
 
@@ -1466,7 +1478,23 @@
     // sample or a bit of fabric shifting in the pocket can't flip the
     // state — transitions now respond to a sustained bow.
     smoothedTiltDelta = smoothedTiltDelta===null ? rawDelta : (smoothedTiltDelta*0.35 + rawDelta*0.65);
-    const enterThreshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
+    let enterThreshold = MOTION_SENSITIVITY_DEG[motionSensitivity.value] ?? 55;
+    if(motionSensitivity.value === 'custom'){
+      const p = loadPositionProfile();
+      if(p.sujud!=null && p.standing!=null){
+        if(p.sitting!=null && p.sitting > p.standing){
+          // Sitting tilts almost as much as Sujud for this phone placement —
+          // set the entry threshold just above sitting's angle instead of
+          // splitting the full standing-to-Sujud range, so Tashahhud can't
+          // cross it. (The hold-duration check further below is what tells
+          // a brief real Sujud apart from a much longer sit, in case the
+          // two angles end up very close.)
+          enterThreshold = p.sitting + Math.max(3, (p.sujud - p.sitting) * 0.25);
+        } else {
+          enterThreshold = p.standing + (p.sujud - p.standing) * 0.5;
+        }
+      }
+    }
     // Exit threshold sits below entry — hysteresis, so a reading hovering
     // right at the edge can't flicker the state back and forth.
     const exitThreshold = enterThreshold * 0.7;
@@ -1505,7 +1533,17 @@
         motionStatus.textContent = 'Watching for Sujud…';
       }
     } else { // motionState === 'down'
-      if(smoothedTiltDelta < exitThreshold){
+      // A real Sujud is held for a few seconds, not tens of seconds. If
+      // the tilt has stayed elevated far longer than any real Sujud would
+      // (e.g. sitting through Tashahhud, where the tilt might never dip
+      // back below the exit threshold on its own), treat it as NOT a
+      // Sujud and drop back to watching, rather than waiting forever.
+      const downTooLong = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MAX_DOWN_HOLD_MS;
+      if(downTooLong){
+        motionState = 'up';
+        motionStatus.classList.remove('dark');
+        motionStatus.textContent = 'Watching for Sujud…';
+      } else if(smoothedTiltDelta < exitThreshold){
         const heldLongEnough = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MIN_DOWN_HOLD_MS;
         motionState = 'up';
         motionStatus.classList.remove('dark');
@@ -1531,6 +1569,94 @@
     if(!motionActive){ flashStatus('Enable motion first'); return; }
     runCalibrationCountdown();
   };
+
+  // ---- Personal position calibration ----
+  // Captures the real tilt angle for standing / Sujud / sitting as YOU
+  // actually hold the phone, instead of assuming one generic angle works
+  // for every body and pocket placement. Solves the case where sitting
+  // for Tashahhud tilts the phone almost as much as bowing does — with
+  // real numbers for both, the app can tell them apart instead of
+  // guessing from a single generic threshold.
+  const CAL_KEY = 'rakah_motion_position_profile';
+  function loadPositionProfile(){
+    try{ return JSON.parse(localStorage.getItem(CAL_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function savePositionProfile(p){
+    try{ localStorage.setItem(CAL_KEY, JSON.stringify(p)); }catch(e){}
+  }
+  function refreshCalStatus(){
+    const p = loadPositionProfile();
+    const parts = [];
+    parts.push('Standing: ' + (p.standing!=null ? Math.round(p.standing)+'°' : 'not set'));
+    parts.push('Sujud: ' + (p.sujud!=null ? Math.round(p.sujud)+'°' : 'not set'));
+    parts.push('Sitting: ' + (p.sitting!=null ? Math.round(p.sitting)+'°' : 'not set'));
+    motionCalStatus.textContent = parts.join(' · ');
+  }
+  refreshCalStatus();
+
+  let calBusy = false;
+  async function ensureMotionPermission(){
+    if(typeof DeviceMotionEvent === 'undefined') return false;
+    try{
+      if(typeof DeviceMotionEvent.requestPermission === 'function'){
+        const res = await DeviceMotionEvent.requestPermission();
+        return res === 'granted';
+      }
+      return true;
+    }catch(e){ return false; }
+  }
+  function runPositionCapture(label, key, statusEl){
+    if(calBusy){ return; }
+    calBusy = true;
+    ensureMotionPermission().then(ok=>{
+      if(!ok){ statusEl.textContent = 'Motion permission denied'; calBusy = false; return; }
+      let listening = false;
+      const handler = (e)=>{
+        const g = e.accelerationIncludingGravity;
+        if(!g || g.x===null || g.y===null || g.z===null) return;
+        lastGravity = { x:g.x, y:g.y, z:g.z };
+      };
+      window.addEventListener('devicemotion', handler);
+      listening = true;
+      let remaining = 4;
+      statusEl.textContent = 'Get into ' + label + ' position — capturing in ' + remaining + '…';
+      const iv = setInterval(()=>{
+        remaining -= 1;
+        if(remaining > 0){
+          statusEl.textContent = 'Get into ' + label + ' position — capturing in ' + remaining + '…';
+          return;
+        }
+        clearInterval(iv);
+        // Sample for ~1 second so a single jitter doesn't skew the result.
+        const samples = [];
+        let count = 0;
+        const REF = { x:0, y:0, z:-9.81 }; // reference "flat" vector — angle is measured against straight-down gravity, consistent regardless of standing baseline drift
+        const sampleIv = setInterval(()=>{
+          if(lastGravity) samples.push(vecAngleDeg(lastGravity, REF));
+          count++;
+          if(count >= 8){
+            clearInterval(sampleIv);
+            if(listening){ window.removeEventListener('devicemotion', handler); listening = false; }
+            calBusy = false;
+            if(samples.length){
+              const avg = samples.reduce((a,b)=>a+b,0)/samples.length;
+              const p = loadPositionProfile();
+              p[key] = avg;
+              savePositionProfile(p);
+              refreshCalStatus();
+              statusEl.textContent = label + ' captured: ' + Math.round(avg) + '° · take the phone out when ready';
+            } else {
+              statusEl.textContent = 'No motion data received — try again';
+            }
+          }
+        }, 120);
+      }, 1000);
+    });
+  }
+  calStandBtn.onclick = ()=> runPositionCapture('standing', 'standing', motionCalStatus);
+  calSujudBtn.onclick = ()=> runPositionCapture('Sujud', 'sujud', motionCalStatus);
+  calSitBtn.onclick = ()=> runPositionCapture('sitting (Tashahhud)', 'sitting', motionCalStatus);
 
   // ---- Qibla compass ----
   // Bearing to the Kaaba via great-circle initial bearing formula, then
