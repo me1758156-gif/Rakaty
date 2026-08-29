@@ -1329,6 +1329,7 @@
   const tiltFill = document.getElementById('tiltFill');
 
   let motionBaselineVec = null;
+  let motionCalibratedVec = null; // snapshot of the original calibration — drift correction is capped relative to this, never to itself
   let motionTiltSince = null;
   let motionState = 'up'; // 'up' | 'down'
   let motionLastEventTime = 0;
@@ -1400,6 +1401,7 @@
     motionActive = true;
     motionEnableBtn.textContent = 'Disable Motion';
     motionBaselineVec = null;
+    motionCalibratedVec = null;
     lastGravity = null;
     smoothedTiltDelta = null;
     motionDownConfirmedAt = null;
@@ -1420,6 +1422,7 @@
     if(motionPrepIntervalId){ clearInterval(motionPrepIntervalId); motionPrepIntervalId = null; }
     motionActive = false;
     motionBaselineVec = null;
+    motionCalibratedVec = null;
     smoothedTiltDelta = null;
     motionDownConfirmedAt = null;
     motionState = 'up';
@@ -1447,6 +1450,7 @@
             y: samples.reduce((a,s)=>a+s.y,0)/samples.length,
             z: samples.reduce((a,s)=>a+s.z,0)/samples.length
           };
+          motionCalibratedVec = { ...motionBaselineVec };
         }
         smoothedTiltDelta = null;
         motionStatus.textContent = 'Calibrated · watching for Sujud…';
@@ -1483,13 +1487,20 @@
         // Slowly track baseline drift (phone settling further into the
         // pocket over a long session) while standing still. Frozen during
         // an actual Sujud below, so a bow never pulls the baseline toward
-        // itself.
-        if(smoothedTiltDelta < enterThreshold*0.3){
-          motionBaselineVec = {
-            x: motionBaselineVec.x*0.995 + lastGravity.x*0.005,
-            y: motionBaselineVec.y*0.995 + lastGravity.y*0.005,
-            z: motionBaselineVec.z*0.995 + lastGravity.z*0.005
+        // itself. Capped against the original calibration so repeated
+        // small nudges across many rak'ahs can never quietly raise the
+        // angle needed to trigger a later Sujud.
+        if(smoothedTiltDelta < enterThreshold*0.15){
+          const candidate = {
+            x: motionBaselineVec.x*0.998 + lastGravity.x*0.002,
+            y: motionBaselineVec.y*0.998 + lastGravity.y*0.002,
+            z: motionBaselineVec.z*0.998 + lastGravity.z*0.002
           };
+          // Only accept the drift if it doesn't pull the baseline more
+          // than a couple of degrees from where it was first calibrated.
+          if(motionCalibratedVec===null || vecAngleDeg(candidate, motionCalibratedVec) < 5){
+            motionBaselineVec = candidate;
+          }
         }
         motionStatus.textContent = 'Watching for Sujud…';
       }
