@@ -1803,13 +1803,14 @@
     qiblaNeedleRotation += delta;
     compassNeedle.style.transform = 'translate(-50%,-100%) rotate(' + qiblaNeedleRotation + 'deg)';
     const off = Math.min(target, 360 - target);
-    const isAligned = off < 5;
     const wasAligned = qiblaToggleBtn.classList.contains('aligned');
+    const isAligned = wasAligned ? off < 9 : off < 5; // hysteresis: no flicker at the edge
     qiblaToggleBtn.classList.toggle('aligned', isAligned);
     document.querySelector('.compass-circle').classList.toggle('aligned', isAligned);
     if(isAligned && !wasAligned && navigator.vibrate) navigator.vibrate(60);
   }
 
+  let qSmooth = null, qLastHeading = null;
   function handleQiblaOrientation(event, isAbsoluteStream){
     let heading;
     if(typeof event.webkitCompassHeading === 'number'){
@@ -1821,11 +1822,22 @@
       // flicker between two different reference frames. Once we've received
       // a genuinely absolute reading, ignore the non-absolute stream entirely.
       const eventIsAbsolute = isAbsoluteStream || event.absolute === true;
-      if(!eventIsAbsolute && receivedAbsoluteHeading) return;
+      if(!eventIsAbsolute && (receivedAbsoluteHeading || 'ondeviceorientationabsolute' in window)) return;
       if(eventIsAbsolute) receivedAbsoluteHeading = true;
       if(event.alpha === null || event.alpha === undefined) return;
       heading = (360 - event.alpha) % 360; // Android: alpha is counter-clockwise from device's start orientation
     }
+    // Smooth sensor noise: low-pass filter on the heading's unit vector
+    // (safe across the 359°→0° wrap), then ignore changes under 1.5°.
+    const hr = heading*Math.PI/180, k = 0.12;
+    if(qSmooth === null) qSmooth = {x:Math.cos(hr), y:Math.sin(hr)};
+    else { qSmooth.x += (Math.cos(hr)-qSmooth.x)*k; qSmooth.y += (Math.sin(hr)-qSmooth.y)*k; }
+    heading = (Math.atan2(qSmooth.y, qSmooth.x)*180/Math.PI + 360) % 360;
+    if(qLastHeading !== null){
+      let dh = Math.abs(heading - qLastHeading); if(dh > 180) dh = 360 - dh;
+      if(dh < 1.5){ clearTimeout(qiblaWatchdogId); return; }
+    }
+    qLastHeading = heading;
     clearTimeout(qiblaWatchdogId);
     qiblaStatus.textContent = 'Qibla is ' + Math.round(qiblaBearing) + '\u00b0 from North \u00b7 rotate until the Kaaba icon points to the top';
     qiblaStatus.classList.add('dark');
@@ -1846,6 +1858,7 @@
   function attachQiblaListener(){
     receivedAbsoluteHeading = false;
     qiblaNeedleRotation = 0;
+    qSmooth = null; qLastHeading = null;
     qiblaAbsoluteHandler = (e)=>handleQiblaOrientation(e, true);
     qiblaRelativeHandler = (e)=>handleQiblaOrientation(e, false);
     window.addEventListener('deviceorientationabsolute', qiblaAbsoluteHandler, true);
