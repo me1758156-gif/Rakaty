@@ -583,6 +583,8 @@
   <div class="qibla-panel" id="qiblaPanel" style="display:none;">
     <div class="camera-row">
       <button class="btn-secondary small" id="qiblaEnableBtn">Enable Qibla</button>
+      <button class="btn-secondary small" id="qiblaSetBtn" type="button">Set Qibla here</button>
+      <button class="btn-secondary small" id="qiblaResetBtn" type="button">Reset</button>
     </div>
     <div class="compass-wrap">
       <div class="compass-circle">
@@ -1789,8 +1791,16 @@
     return R * 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
 
+  // Compass gives MAGNETIC north; Qibla bearing is from TRUE north. DECL is the local
+  // magnetic declination (about +4.9 deg in Alexandria per NOAA). qiblaTrim is an optional
+  // one-tap calibration ("Set Qibla here") for a constant sensor offset.
+  const DECL = 4.9;
+  let qiblaTrim = 0, lastRawHeading = null;
+  try{ qiblaTrim = parseFloat(localStorage.getItem('qiblaTrim')) || 0; }catch(e){}
   function updateQiblaNeedle(heading){
     if(qiblaBearing===null) return;
+    lastRawHeading = heading;
+    heading = (heading + DECL + qiblaTrim + 720) % 360;
     const target = (qiblaBearing - heading + 360) % 360; // 0-359.999, wraps at 360
     // Unwrap: move the needle by the shortest signed delta from where it
     // currently sits, instead of jumping straight to the raw 0-360 value.
@@ -1872,6 +1882,18 @@
     qiblaStatus.textContent = 'Qibla off \u00b7 tap Enable Qibla, then hold your phone flat and rotate until the Kaaba icon points to the top';
   }
 
+  document.getElementById('qiblaSetBtn').onclick = ()=>{
+    if(qiblaBearing===null || lastRawHeading===null){ qiblaStatus.textContent = 'Tap Enable Qibla first, then face the true Qibla and tap Set Qibla here.'; return; }
+    let t = qiblaBearing - (lastRawHeading + DECL);
+    t = ((t + 540) % 360) - 180;                       // keep it within -180..180
+    qiblaTrim = t;
+    try{ localStorage.setItem('qiblaTrim', String(t)); }catch(e){}
+    qiblaStatus.textContent = 'Saved \u00b7 correction ' + Math.round(t) + '\u00b0. The needle should now point up while you face the Qibla.';
+  };
+  document.getElementById('qiblaResetBtn').onclick = ()=>{
+    qiblaTrim = 0; try{ localStorage.removeItem('qiblaTrim'); }catch(e){}
+    qiblaStatus.textContent = 'Correction cleared.';
+  };
   qiblaToggleBtn.onclick = ()=>{
     const opening = qiblaPanel.style.display === 'none';
     qiblaPanel.style.display = opening ? 'block' : 'none';
