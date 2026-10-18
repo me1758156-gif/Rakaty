@@ -1797,9 +1797,21 @@
   const DECL = 4.9;
   let qiblaTrim = 0, lastRawHeading = null;
   try{ qiblaTrim = parseFloat(localStorage.getItem('qiblaTrim')) || 0; }catch(e){}
+  // Steady the needle: low-pass filter on the heading's unit vector (safe across 359->0),
+  // then ignore changes under 1.5 deg. Does not change which heading is used, only jitter.
+  let qS = null, qLast = null;
   function updateQiblaNeedle(heading){
     if(qiblaBearing===null) return;
+    const hr = heading*Math.PI/180;
+    if(qS===null) qS = {x:Math.cos(hr), y:Math.sin(hr)};
+    else { qS.x += (Math.cos(hr)-qS.x)*0.12; qS.y += (Math.sin(hr)-qS.y)*0.12; }
+    heading = (Math.atan2(qS.y, qS.x)*180/Math.PI + 360) % 360;
     lastRawHeading = heading;
+    if(qLast !== null){
+      let dh = Math.abs(heading - qLast); if(dh > 180) dh = 360 - dh;
+      if(dh < 1.5) return;
+    }
+    qLast = heading;
     heading = (heading + DECL + qiblaTrim + 720) % 360;
     const target = (qiblaBearing - heading + 360) % 360; // 0-359.999, wraps at 360
     // Unwrap: move the needle by the shortest signed delta from where it
@@ -1856,6 +1868,7 @@
   function attachQiblaListener(){
     receivedAbsoluteHeading = false;
     qiblaNeedleRotation = 0;
+    qS = null; qLast = null;
     qiblaAbsoluteHandler = (e)=>handleQiblaOrientation(e, true);
     qiblaRelativeHandler = (e)=>handleQiblaOrientation(e, false);
     window.addEventListener('deviceorientationabsolute', qiblaAbsoluteHandler, true);
@@ -1866,6 +1879,7 @@
   }
 
   function stopQiblaCompass(){
+    qS = null; qLast = null;
     if(qiblaAbsoluteHandler){
       window.removeEventListener('deviceorientationabsolute', qiblaAbsoluteHandler, true);
       qiblaAbsoluteHandler = null;
