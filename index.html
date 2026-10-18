@@ -597,6 +597,21 @@
     <div class="cam-status" id="qiblaStatus">Qibla off · tap Enable Qibla, then hold your phone flat and rotate until the Kaaba icon points to the top</div>
   </div>
 
+  <div class="prayer-next" id="prayerNext" role="button" tabindex="0" aria-label="Prayer times">
+    <div class="pn-top"><span class="pn-label">Next prayer</span><span class="pn-where" id="pnWhere"></span></div>
+    <div class="pn-main">
+      <div class="pn-name"><span id="pnName">—</span><span class="pn-ar" id="pnAr"></span></div>
+      <div class="pn-count" id="pnCount">--:--:--</div>
+    </div>
+    <div class="pn-bar"><div class="pn-bar-fill" id="pnBar"></div></div>
+    <div class="pn-at" id="pnAt"></div>
+    <div class="pn-list" id="pnList" style="display:none;">
+      <div id="pnRows"></div>
+      <button class="btn-secondary small" id="pnLocBtn" type="button">📍 Use my location</button>
+      <div class="pn-note">Calculated on your phone · Egyptian General Authority method · can differ by a few minutes from your local mosque</div>
+    </div>
+  </div>
+
   <div class="step active" id="stepPrayer">
     <div class="step-label">Step 1 · Choose your prayer</div>
     <div class="selector" id="prayerSelector"></div>
@@ -782,6 +797,7 @@
   function goToStep(name){
     Object.values(steps).forEach(el=>el.classList.remove('active'));
     steps[name].classList.add('active');
+    document.body.dataset.step = name;
     window.scrollTo({top:0, behavior:'smooth'});
     if(name==='track') acquireWakeLock();
     else releaseWakeLock();
@@ -906,7 +922,18 @@
 
   // ---- bead ring ----
   function buildRing(){
-    ring.innerHTML='';
+    ring.innerHTML =
+      '<defs>' +
+      '<radialGradient id="gBeadEmpty" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#fff" stop-opacity=".6"/><stop offset=".5" stop-color="#9CC4FF" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".05"/></radialGradient>' +
+      '<radialGradient id="gBeadBlue" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#EAF6FF"/><stop offset=".4" stop-color="#5CB8FF"/><stop offset="1" stop-color="#1F5FD6"/></radialGradient>' +
+      '<radialGradient id="gBeadGoldEmpty" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#FFF3D2" stop-opacity=".7"/><stop offset="1" stop-color="#E3B866" stop-opacity=".14"/></radialGradient>' +
+      '<radialGradient id="gBeadGold" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#FFF6DA"/><stop offset=".4" stop-color="#E9BE6A"/><stop offset="1" stop-color="#A9742A"/></radialGradient>' +
+      '<linearGradient id="gProg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ADAFF"/><stop offset="1" stop-color="#3B7DFF"/></linearGradient>' +
+      '</defs>' +
+      '<circle class="ring-track" cx="170" cy="170" r="150"/>' +
+      '<circle class="ring-track-edge" cx="170" cy="170" r="161"/>' +
+      '<circle class="ring-track-edge" cx="170" cy="170" r="139"/>' +
+      '<circle class="ring-progress" id="ringProgress" cx="170" cy="170" r="150" transform="rotate(-90 170 170)"/>';
     const map = activeMap();
     const total = map.length;
     const cx=170, cy=170, r=150;
@@ -927,6 +954,11 @@
 
   function renderRing(){
     const count = activeCount();
+    const prog = document.getElementById('ringProgress');
+    if(prog){
+      const C = 2*Math.PI*150, tot = activeMap().length || 1;
+      prog.style.strokeDasharray = (C*Math.min(count/tot,1)) + ' ' + C;
+    }
     const beads = ring.querySelectorAll('.bead');
     beads.forEach(b=>{
       const i = parseInt(b.dataset.index);
@@ -1892,6 +1924,99 @@
     new MutationObserver(function(){
       n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop');
     }).observe(n, {childList:true, characterData:true, subtree:true});
+  })();
+</script>
+<script>
+  /* ===== Prayer times (offline calculation) + next-prayer countdown ===== */
+  (function(){
+    var R=Math.PI/180, D=180/Math.PI;
+    var sin=function(x){return Math.sin(x*R)}, cos=function(x){return Math.cos(x*R)}, tan=function(x){return Math.tan(x*R)};
+    function fix(a,b){ a=a-b*Math.floor(a/b); return a<0?a+b:a; }
+    function julian(y,m,d){ if(m<=2){y-=1;m+=12;} var A=Math.floor(y/100), B=2-A+Math.floor(A/4); return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5; }
+    function sunPos(jd){
+      var d=jd-2451545.0, g=fix(357.529+0.98560028*d,360), q=fix(280.459+0.98564736*d,360);
+      var L=fix(q+1.915*sin(g)+0.020*sin(2*g),360), e=23.439-0.00000036*d;
+      var RA=fix(Math.atan2(cos(e)*sin(L),cos(L))*D,360)/15;
+      var eq=q/15-RA; if(eq>12) eq-=24; if(eq<-12) eq+=24;
+      return {decl:Math.asin(sin(e)*sin(L))*D, eq:eq};
+    }
+    // one calendar day's times as Date objects. y,m(1-12),d are the calendar day; lat/lng in degrees.
+    function timesFor(y,m,d,lat,lng){
+      var jd=julian(y,m,d)-lng/360, sp=sunPos(jd+0.5);
+      var noon=12-sp.eq-lng/15;
+      function ha(a){ var v=(-sin(a)-sin(lat)*sin(sp.decl))/(cos(lat)*cos(sp.decl)); v=Math.max(-1,Math.min(1,v)); return Math.acos(v)*D/15; }
+      var asrAngle=-Math.atan(1/(1+tan(Math.abs(lat-sp.decl))))*D;
+      var h={ fajr:noon-ha(19.5), sunrise:noon-ha(0.833), dhuhr:noon+0.0334, asr:noon+ha(asrAngle), maghrib:noon+ha(0.833)+0.0334, isha:noon+ha(17.5) };
+      var base=Date.UTC(y,m-1,d), out={};
+      for(var k in h) out[k]=new Date(base+h[k]*3600000);
+      return out;
+    }
+    var NAMES=[['fajr','Fajr','الفجر'],['sunrise','Sunrise','الشروق'],['dhuhr','Dhuhr','الظهر'],['asr','Asr','العصر'],['maghrib','Maghrib','المغرب'],['isha','Isha','العشاء']];
+    var PRAYERS=['fajr','dhuhr','asr','maghrib','isha'];
+    var DEFAULT={lat:31.2001,lng:29.9187,label:'Alexandria',isDefault:true};
+    var loc=DEFAULT;
+    try{ var sv=JSON.parse(localStorage.getItem('rakahLoc')||'null'); if(sv&&typeof sv.lat==='number') loc={lat:sv.lat,lng:sv.lng,label:'Your location',isDefault:false}; }catch(e){}
+
+    function daySet(offset){
+      var n=new Date(); n.setDate(n.getDate()+offset);
+      return timesFor(n.getFullYear(),n.getMonth()+1,n.getDate(),loc.lat,loc.lng);
+    }
+    function fmt(dt){ return dt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); }
+    function pad(n){ return (n<10?'0':'')+n; }
+
+    var el=function(id){return document.getElementById(id)};
+    function buildSeq(){
+      var seq=[];
+      [-1,0,1].forEach(function(o){ var t=daySet(o); PRAYERS.forEach(function(k){ seq.push({k:k,t:t[k]}); }); });
+      seq.sort(function(a,b){return a.t-b.t});
+      return seq;
+    }
+    var seq=buildSeq(), seqDay=new Date().getDate();
+    function nameOf(k){ for(var i=0;i<NAMES.length;i++) if(NAMES[i][0]===k) return NAMES[i]; }
+
+    function renderRows(){
+      var t=daySet(0), now=new Date(), nextK=null;
+      for(var i=0;i<seq.length;i++) if(seq[i].t>now){ nextK=seq[i].k; break; }
+      el('pnRows').innerHTML=NAMES.map(function(n){
+        return '<div class="pn-row'+(n[0]===nextK?' next':'')+'"><span>'+n[1]+' <span class="pn-ar">'+n[2]+'</span></span><span class="pn-t">'+fmt(t[n[0]])+'</span></div>';
+      }).join('');
+      el('pnWhere').textContent=loc.label+(loc.isDefault?' (default)':'');
+    }
+
+    function tick(){
+      var now=new Date();
+      if(now.getDate()!==seqDay){ seq=buildSeq(); seqDay=now.getDate(); renderRows(); }
+      var nxt=null, prev=null;
+      for(var i=0;i<seq.length;i++){ if(seq[i].t>now){ nxt=seq[i]; prev=seq[i-1]; break; } }
+      if(!nxt){ seq=buildSeq(); return; }
+      var ms=nxt.t-now, s=Math.floor(ms/1000), h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+      var nm=nameOf(nxt.k);
+      el('pnName').textContent=nm[1]; el('pnAr').textContent=nm[2];
+      el('pnCount').textContent=pad(h)+':'+pad(m)+':'+pad(sec);
+      el('pnAt').textContent='at '+fmt(nxt.t);
+      if(prev){ var span=nxt.t-prev.t; el('pnBar').style.width=Math.max(0,Math.min(100,(1-ms/span)*100))+'%'; }
+      el('prayerNext').classList.toggle('soon', ms<15*60000);
+    }
+
+    function setLoc(lat,lng){
+      loc={lat:lat,lng:lng,label:'Your location',isDefault:false};
+      try{ localStorage.setItem('rakahLoc',JSON.stringify({lat:lat,lng:lng})); }catch(e){}
+      seq=buildSeq(); renderRows(); tick();
+    }
+    function askLoc(){
+      var b=el('pnLocBtn');
+      if(!navigator.geolocation){ b.textContent='Location not supported'; return; }
+      b.textContent='Getting location…';
+      navigator.geolocation.getCurrentPosition(function(p){ b.textContent='📍 Location updated'; setLoc(p.coords.latitude,p.coords.longitude); },
+        function(){ b.textContent='Location denied · tap to retry'; }, {timeout:15000, maximumAge:600000});
+    }
+    el('pnLocBtn').addEventListener('click', function(e){ e.stopPropagation(); askLoc(); });
+    function toggle(){ var l=el('pnList'); l.style.display = l.style.display==='none' ? 'block' : 'none'; if(l.style.display==='block') renderRows(); }
+    el('prayerNext').addEventListener('click', function(e){ if(e.target.closest('#pnList')) return; toggle(); });
+    el('prayerNext').addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+    // quietly use real location if the browser already has permission
+    try{ if(loc.isDefault && navigator.permissions){ navigator.permissions.query({name:'geolocation'}).then(function(r){ if(r.state==='granted') navigator.geolocation.getCurrentPosition(function(p){ setLoc(p.coords.latitude,p.coords.longitude); }); }).catch(function(){}); } }catch(e){}
+    renderRows(); tick(); setInterval(tick,1000);
   })();
 </script>
 </body>

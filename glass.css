@@ -180,3 +180,50 @@ h1 .ar{ -webkit-text-fill-color:var(--text-dim); }
 /* rak'ah number pops when it changes */
 .rakah-number.pop{ animation:numPop .5s cubic-bezier(.2,1.4,.4,1); }
 @keyframes numPop{ 0%{transform:scale(.6); opacity:.2} 100%{transform:scale(1); opacity:1} }
+
+/* ===== Glass ring v2 ===== */
+.ring-track{ fill:none; stroke:rgba(255,255,255,0.07); stroke-width:26;
+  filter:drop-shadow(0 6px 14px rgba(0,10,40,0.45)); }
+.ring-track-edge{ fill:none; stroke:rgba(200,230,255,0.16); stroke-width:1; }
+.ring-progress{ fill:none; stroke:url(#gProg); stroke-width:5; stroke-linecap:round;
+  stroke-dasharray:0 1000; transition:stroke-dasharray .6s cubic-bezier(.2,.8,.2,1);
+  filter:drop-shadow(0 0 7px rgba(92,184,255,0.85)); }
+.bead{ fill:url(#gBeadEmpty); stroke:rgba(210,232,255,0.5); stroke-width:1;
+  filter:drop-shadow(0 3px 4px rgba(0,10,40,0.5)); }
+.bead.filled{ fill:url(#gBeadBlue); stroke:rgba(210,238,255,0.8);
+  filter:drop-shadow(0 0 7px rgba(92,184,255,0.95)); }
+.bead.marker{ fill:url(#gBeadGoldEmpty); stroke:rgba(255,226,160,0.7); }
+.bead.marker.filled{ fill:url(#gBeadGold); stroke:rgba(255,240,200,0.9);
+  filter:drop-shadow(0 0 8px rgba(227,184,102,0.95)); }
+
+/* ===== Next-prayer countdown ===== */
+.prayer-next{
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  background-color:var(--panel);
+  background-image:linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03) 45%, rgba(255,255,255,0));
+  border:1px solid rgba(190,220,255,0.22); border-top-color:rgba(230,243,255,0.42);
+  border-radius:var(--r-lg); padding:14px 16px; margin-bottom:var(--sp-4);
+  box-shadow:var(--shadow-card), inset 0 1px 0 rgba(255,255,255,0.08);
+  cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
+  transition:transform .15s ease, box-shadow .3s ease;
+}
+.prayer-next:active{ transform:scale(0.985); }
+.prayer-next.soon{ box-shadow:0 0 0 1px rgba(227,184,102,0.55), 0 0 28px rgba(227,184,102,0.28), var(--shadow-card); }
+.pn-top{ display:flex; justify-content:space-between; align-items:center;
+  font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-dim); }
+.pn-main{ display:flex; justify-content:space-between; align-items:baseline; margin:6px 0 10px; }
+.pn-name{ font-size:20px; font-weight:800; color:var(--text); }
+.pn-ar{ font-family:'Amiri',serif; font-weight:400; font-size:17px; color:var(--text-dim); margin-left:8px; }
+.pn-count{ font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:500; letter-spacing:.02em;
+  background:linear-gradient(180deg,#fff,#A9D2FF); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.prayer-next.soon .pn-count{ background:linear-gradient(180deg,#FFF3D2,#E3B866); -webkit-background-clip:text; background-clip:text; }
+.pn-bar{ height:5px; border-radius:999px; background:rgba(255,255,255,0.09); overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,0.35); }
+.pn-bar-fill{ height:100%; width:0; border-radius:999px; background:linear-gradient(90deg,#3B8BFF,#8CD0FF); box-shadow:0 0 10px rgba(92,184,255,0.7); transition:width 1s linear; }
+.pn-at{ margin-top:8px; font-size:12px; color:var(--text-dim); }
+.pn-list{ margin-top:12px; padding-top:10px; border-top:1px solid rgba(190,220,255,0.14); cursor:default; }
+.pn-row{ display:flex; justify-content:space-between; padding:8px 4px; font-size:14px; color:var(--text-dim); border-radius:10px; }
+.pn-row .pn-ar{ font-size:14px; }
+.pn-t{ font-family:'JetBrains Mono',monospace; }
+.pn-row.next{ color:var(--text); font-weight:700; background:rgba(92,184,255,0.14); box-shadow:inset 0 0 0 1px rgba(140,200,255,0.3); padding-left:10px; padding-right:10px; }
+.pn-note{ margin-top:10px; font-size:11px; line-height:1.4; color:var(--text-faint); }
+body[data-step="track"] .prayer-next{ display:none; }
