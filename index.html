@@ -1875,5 +1875,24 @@
   }
 })();
 </script>
+<script>
+  /* glass effects: tap ripple + rak'ah number pop */
+  document.addEventListener('pointerdown', function(e){
+    var t = e.target.closest && e.target.closest('.chip,.mode-card,.btn-main,.btn-secondary');
+    if(!t) return;
+    var r = t.getBoundingClientRect(), d = document.createElement('span');
+    d.className = 'ripple';
+    d.style.left = (e.clientX - r.left) + 'px';
+    d.style.top = (e.clientY - r.top) + 'px';
+    t.appendChild(d);
+    setTimeout(function(){ d.remove(); }, 700);
+  }, {passive:true});
+  (function(){
+    var n = document.getElementById('rakahNum'); if(!n) return;
+    new MutationObserver(function(){
+      n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop');
+    }).observe(n, {childList:true, characterData:true, subtree:true});
+  })();
+</script>
 </body>
 </html>

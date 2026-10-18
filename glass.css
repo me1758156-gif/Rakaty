@@ -159,3 +159,24 @@ h1 .ar{ -webkit-text-fill-color:var(--text-dim); }
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   .chip,.custom-wrap,.mode-card,.camera-panel,.qibla-panel,.track-summary,.log-panel,.center-plate,.btn-secondary{ background-color:rgba(18,36,74,0.92); }
 }
+
+/* ===== Glass polish v3: ripple, shimmer, number pop ===== */
+.chip,.mode-card,.btn-main,.btn-secondary{ position:relative; overflow:hidden; }
+.ripple{
+  position:absolute; border-radius:50%; pointer-events:none;
+  width:12px; height:12px; margin:-6px 0 0 -6px;
+  background:radial-gradient(circle, rgba(255,255,255,0.55), rgba(140,200,255,0.25) 55%, transparent 70%);
+  animation:rippleOut .65s ease-out forwards;
+}
+@keyframes rippleOut{ to{ transform:scale(26); opacity:0; } }
+/* slow light sweep across the main button and the selected chip/card */
+.btn-main::after,.chip.active::after,.mode-card.active::after{
+  content:""; position:absolute; top:0; bottom:0; left:-60%; width:45%; pointer-events:none;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform:skewX(-18deg);
+  animation:sheen 4.5s ease-in-out infinite;
+}
+@keyframes sheen{ 0%,60%{ left:-60%; } 100%{ left:130%; } }
+/* rak'ah number pops when it changes */
+.rakah-number.pop{ animation:numPop .5s cubic-bezier(.2,1.4,.4,1); }
+@keyframes numPop{ 0%{transform:scale(.6); opacity:.2} 100%{transform:scale(1); opacity:1} }
