@@ -1,8 +1,14 @@
-const CACHE_NAME = 'rakah-tracker-v14';
+const CACHE_NAME = 'rakah-tracker-v15';
 const ASSETS = [
   './index.html',
   './manifest.json',
   './glass.css',
+  './prayer.html',
+  './manifest-prayer.json',
+  './prayer-icon-180.png',
+  './prayer-icon-192.png',
+  './prayer-icon-512.png',
+  './prayer-icon-512-maskable.png',
   './icon-192.png',
   './icon-512.png',
   './icon-512-maskable.png',
