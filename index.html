@@ -1812,6 +1812,7 @@
 
   let qSmooth = null, qLastHeading = null;
   function handleQiblaOrientation(event, isAbsoluteStream){
+    if(qSensorLive) return;
     let heading;
     if(typeof event.webkitCompassHeading === 'number'){
       heading = event.webkitCompassHeading; // iOS Safari: already clockwise from true north, always trustworthy
@@ -1827,21 +1828,54 @@
       if(event.alpha === null || event.alpha === undefined) return;
       heading = (360 - event.alpha) % 360; // Android: alpha is counter-clockwise from device's start orientation
     }
-    // Smooth sensor noise: low-pass filter on the heading's unit vector
-    // (safe across the 359°→0° wrap), then ignore changes under 1.5°.
+    applyQiblaHeading(heading, typeof event.webkitCompassHeading === 'number' ? 'iOS compass' : 'orientation');
+  }
+
+  // Shared by every heading source: smooth, deadband, update needle + live readout
+  function applyQiblaHeading(heading, src){
+    if(qiblaBearing===null) return;
     const hr = heading*Math.PI/180, k = 0.12;
     if(qSmooth === null) qSmooth = {x:Math.cos(hr), y:Math.sin(hr)};
     else { qSmooth.x += (Math.cos(hr)-qSmooth.x)*k; qSmooth.y += (Math.sin(hr)-qSmooth.y)*k; }
     heading = (Math.atan2(qSmooth.y, qSmooth.x)*180/Math.PI + 360) % 360;
+    clearTimeout(qiblaWatchdogId);
     if(qLastHeading !== null){
       let dh = Math.abs(heading - qLastHeading); if(dh > 180) dh = 360 - dh;
-      if(dh < 1.5){ clearTimeout(qiblaWatchdogId); return; }
+      if(dh < 1.5) return;
     }
     qLastHeading = heading;
-    clearTimeout(qiblaWatchdogId);
-    qiblaStatus.textContent = 'Qibla is ' + Math.round(qiblaBearing) + '\u00b0 from North \u00b7 rotate until the Kaaba icon points to the top';
+    qiblaStatus.textContent = 'You face ' + Math.round(heading) + '\u00b0 \u00b7 Qibla is ' + Math.round(qiblaBearing) + '\u00b0 \u00b7 turn until the Kaaba icon points up (' + src + ')';
     qiblaStatus.classList.add('dark');
     updateQiblaNeedle(heading);
+  }
+
+  // Preferred on Android Chrome: fused absolute orientation sensor (gives a true
+  // quaternion from accelerometer + gyro + magnetometer, much steadier than alpha)
+  let qSensor = null, qSensorLive = false;
+  function startQiblaSensor(){
+    if(!('AbsoluteOrientationSensor' in window)) return false;
+    try{
+      qSensor = new AbsoluteOrientationSensor({frequency:30});
+      qSensor.addEventListener('reading', ()=>{
+        const q = qSensor.quaternion; if(!q) return;
+        const x=q[0], y=q[1], z=q[2], w=q[3];
+        const up = 2*(y*z + x*w);                 // vertical part of the phone's top edge
+        let e, n;
+        if(Math.abs(up) < 0.7){                   // held flat-ish: use the top edge
+          e = 2*(x*y - z*w);  n = 1 - 2*(x*x + z*z);
+        } else {                                  // held upright: use where the back points
+          e = -2*(x*z + y*w); n = -2*(y*z - x*w);
+        }
+        qSensorLive = true;
+        applyQiblaHeading((Math.atan2(e,n)*180/Math.PI + 360) % 360, 'sensor');
+      });
+      qSensor.addEventListener('error', ()=>{
+        qSensorLive = false; try{ qSensor.stop(); }catch(_){}
+        qSensor = null; attachOrientationEvents();
+      });
+      qSensor.start();
+      return true;
+    }catch(e){ qSensor = null; return false; }
   }
 
   function startQiblaCompass(){
@@ -1859,16 +1893,26 @@
     receivedAbsoluteHeading = false;
     qiblaNeedleRotation = 0;
     qSmooth = null; qLastHeading = null;
+    qiblaWatchdogId = setTimeout(()=>{
+      qiblaStatus.textContent = 'No compass data received \u00b7 check that this site has motion/orientation access in your browser\u2019s site settings, or that your device has a compass sensor.';
+    }, 3000);
+    if(startQiblaSensor()) return;
+    attachOrientationEvents();
+  }
+  function attachOrientationEvents(){
     qiblaAbsoluteHandler = (e)=>handleQiblaOrientation(e, true);
     qiblaRelativeHandler = (e)=>handleQiblaOrientation(e, false);
     window.addEventListener('deviceorientationabsolute', qiblaAbsoluteHandler, true);
     window.addEventListener('deviceorientation', qiblaRelativeHandler, true);
+    clearTimeout(qiblaWatchdogId);
     qiblaWatchdogId = setTimeout(()=>{
       qiblaStatus.textContent = 'No compass data received \u00b7 check that this site has motion/orientation access in your browser\u2019s site settings, or that your device has a compass sensor.';
     }, 3000);
   }
 
   function stopQiblaCompass(){
+    if(qSensor){ try{ qSensor.stop(); }catch(_){} qSensor = null; }
+    qSensorLive = false;
     if(qiblaAbsoluteHandler){
       window.removeEventListener('deviceorientationabsolute', qiblaAbsoluteHandler, true);
       qiblaAbsoluteHandler = null;
