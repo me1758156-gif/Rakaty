@@ -1,0 +1,81 @@
+/* Rakah Tracker — blue glass theme (overrides index.html styles) */
+:root{
+  --bg:#071226; --bg-2:#050B18;
+  --panel:rgba(255,255,255,0.06); --panel-2:rgba(255,255,255,0.10);
+  --line:rgba(140,190,255,0.16); --line-strong:rgba(140,190,255,0.38);
+  --gold:#E3B866; --gold-bright:#F2D08C;
+  --teal:#5CB8FF;
+  --text:#EAF2FF; --text-dim:#9DB4D6; --text-faint:#6A82A8;
+  --glass-blur:blur(18px) saturate(140%);
+  --shadow-card:0 12px 34px rgba(0,10,40,0.45);
+  --shadow-btn:0 6px 18px rgba(80,160,255,0.28);
+}
+body{
+  background:
+    radial-gradient(ellipse 700px 460px at 15% -5%, rgba(60,140,255,0.32), transparent 60%),
+    radial-gradient(ellipse 600px 480px at 95% 105%, rgba(30,90,220,0.30), transparent 60%),
+    radial-gradient(ellipse 500px 380px at 50% 55%, rgba(80,170,255,0.08), transparent 70%),
+    var(--bg);
+  background-attachment:fixed;
+}
+/* glass surfaces */
+.chip,.custom-wrap,.mode-card,.camera-panel,.qibla-panel,.track-summary,.log-panel,.center-plate,.btn-secondary,select{
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  background-color:var(--panel);
+  border:1px solid var(--line);
+  box-shadow:var(--shadow-card), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.btn-secondary,select{ box-shadow:inset 0 1px 0 rgba(255,255,255,0.08); }
+.chip.active,.mode-card.active{
+  background:linear-gradient(135deg, rgba(70,150,255,0.85), rgba(35,95,215,0.85));
+  border-color:rgba(160,205,255,0.55);
+  box-shadow:0 10px 28px rgba(40,110,255,0.40), inset 0 1px 0 rgba(255,255,255,0.25);
+  color:#fff;
+}
+.chip.active .chip-ar,.chip.active .chip-count{ color:#fff; }
+.btn-main{
+  background:linear-gradient(135deg,#4DA3FF,#2465E0);
+  color:#fff; box-shadow:var(--shadow-btn);
+}
+.bead.filled{ fill:#5CB8FF; }
+.bead.marker,.bead.marker.filled{ fill:var(--gold); }
+.brightness-fill{ background:linear-gradient(90deg,#3B8BFF,#8CD0FF); }
+
+/* press + selection feel */
+.chip,.mode-card,.btn-main,.btn-secondary,.custom-wrap{
+  transition:transform .15s ease, border-color .15s ease, box-shadow .2s ease, background .2s ease;
+}
+.chip:active,.mode-card:active,.btn-main:active,.btn-secondary:active{ transform:scale(0.96); }
+.chip.active,.mode-card.active{ animation:selWobble .45s ease; }
+@keyframes selWobble{
+  0%{transform:scale(1)} 25%{transform:scale(1.03) rotate(-0.6deg)}
+  55%{transform:scale(0.99) rotate(0.5deg)} 100%{transform:scale(1) rotate(0)}
+}
+/* step transition */
+.step.active{ animation:stepIn .38s cubic-bezier(.2,.8,.2,1); }
+@keyframes stepIn{ from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none} }
+
+/* ring shake on each count (class added by JS) */
+.ring-wrap.shake{ animation:ringShake .38s ease; }
+@keyframes ringShake{
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px) scale(1.01)}
+  40%{transform:translateX(4px)} 60%{transform:translateX(-2px)} 80%{transform:translateX(2px)}
+}
+.center-plate.listening{ box-shadow:0 0 0 1px rgba(92,184,255,0.5), 0 0 34px rgba(60,150,255,0.35); }
+
+/* Qibla: small glass pill, fixed top-right, visible on every step */
+#qiblaToggleBtn{
+  position:fixed; top:calc(env(safe-area-inset-top,0px) + 10px); right:12px; z-index:60;
+  padding:7px 12px; font-size:12px; border-radius:999px;
+  background:rgba(20,50,100,0.45);
+}
+#qiblaToggleBtn.aligned{
+  border-color:#6BE3A8; color:#C9FFE3;
+  box-shadow:0 0 18px rgba(107,227,168,0.55), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.qibla-panel{
+  position:fixed; top:calc(env(safe-area-inset-top,0px) + 52px); right:12px; z-index:59;
+  width:min(320px, calc(100vw - 24px)); margin:0;
+}
+.compass-circle.aligned{ box-shadow:0 0 26px rgba(107,227,168,0.6); border-color:#6BE3A8; }
+@media (prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important;} }

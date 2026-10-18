@@ -568,6 +568,7 @@
   }
 
 </style>
+<link rel="stylesheet" href="./glass.css">
 </head>
 <body>
 <div class="app">
@@ -1011,6 +1012,8 @@
     renderAll();
     pulseLastBead();
     if(navigator.vibrate) navigator.vibrate(mode==='motion' ? [70,60,70] : 40);
+    const rw = document.querySelector('.ring-wrap');
+    if(rw){ rw.classList.remove('shake'); void rw.offsetWidth; rw.classList.add('shake'); }
   }
 
   function undoCount(){
@@ -1766,6 +1769,12 @@
     else if(delta < -180) delta += 360;
     qiblaNeedleRotation += delta;
     compassNeedle.style.transform = 'translate(-50%,-100%) rotate(' + qiblaNeedleRotation + 'deg)';
+    const off = Math.min(target, 360 - target);
+    const isAligned = off < 5;
+    const wasAligned = qiblaToggleBtn.classList.contains('aligned');
+    qiblaToggleBtn.classList.toggle('aligned', isAligned);
+    document.querySelector('.compass-circle').classList.toggle('aligned', isAligned);
+    if(isAligned && !wasAligned && navigator.vibrate) navigator.vibrate(60);
   }
 
   function handleQiblaOrientation(event, isAbsoluteStream){
