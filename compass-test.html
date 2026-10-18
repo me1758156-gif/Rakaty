@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Compass test</title>
+<style>
+ body{margin:0;background:#071226;color:#EAF2FF;font-family:system-ui,sans-serif;padding:18px;text-align:center}
+ h1{font-size:18px;margin:6px 0 14px}
+ button{font-size:16px;padding:12px 22px;border-radius:12px;border:0;background:#2f7bff;color:#fff}
+ .card{background:rgba(255,255,255,.08);border-radius:14px;padding:12px;margin:12px 0;text-align:left;font-size:15px;line-height:1.7}
+ .big{font-size:44px;font-weight:700;text-align:center}
+ .lbl{color:#9DB4D6;font-size:12px;text-align:center;margin-top:-6px}
+ #arrow{width:150px;height:150px;margin:14px auto;position:relative;border:2px solid #4b6fb3;border-radius:50%}
+ #arrow i{position:absolute;left:50%;top:6px;width:4px;height:69px;margin-left:-2px;background:#ff5a5a;border-radius:2px;transform-origin:50% 100%}
+ #arrow b{position:absolute;left:50%;top:-2px;transform:translateX(-50%);font-size:12px;color:#ff9a9a}
+ code{color:#8CD0FF}
+</style></head><body>
+<h1>Compass test</h1>
+<button id="go">Start compass</button>
+<div id="out" style="display:none">
+ <div id="arrow"><b>PHONE TOP</b><i id="needle"></i></div>
+ <div class="lbl">Red needle points to <b>North</b>. Lay the phone flat.</div>
+ <div class="card">
+  <div class="big" id="hAbs">--</div><div class="lbl">heading · ABSOLUTE stream (deviceorientationabsolute)</div>
+  <div class="big" id="hRel" style="margin-top:12px">--</div><div class="lbl">heading · RELATIVE stream (deviceorientation)</div>
+  <div class="big" id="hIos" style="margin-top:12px">--</div><div class="lbl">heading · iOS webkitCompassHeading</div>
+ </div>
+ <div class="card" id="raw">waiting for data…</div>
+ <div class="card">0° = North, 90° = East, 180° = South, 270° = West.<br>Compare these numbers with another compass app at the same spot, phone flat.</div>
+</div>
+<script>
+ const $=id=>document.getElementById(id);
+ let a={}, r={}, ios=null;
+ function h(e){ return e.alpha==null ? null : (360-e.alpha)%360; }
+ function show(){
+  $('hAbs').textContent = a.h==null?'--':Math.round(a.h)+'°';
+  $('hRel').textContent = r.h==null?'--':Math.round(r.h)+'°';
+  $('hIos').textContent = ios==null?'--':Math.round(ios)+'°';
+  const use = ios!=null?ios:(a.h!=null?a.h:r.h);
+  if(use!=null) $('needle').style.transform='rotate('+(-use)+'deg)';
+  const f=v=>v==null?'-':v.toFixed(0);
+  $('raw').innerHTML='absolute stream: alpha <code>'+f(a.alpha)+'</code> beta <code>'+f(a.beta)+'</code> gamma <code>'+f(a.gamma)+'</code> · absolute flag <code>'+a.abs+'</code><br>'+
+                     'relative stream: alpha <code>'+f(r.alpha)+'</code> beta <code>'+f(r.beta)+'</code> gamma <code>'+f(r.gamma)+'</code> · absolute flag <code>'+r.abs+'</code>';
+ }
+ function attach(){
+  window.addEventListener('deviceorientationabsolute',e=>{a={alpha:e.alpha,beta:e.beta,gamma:e.gamma,abs:e.absolute,h:h(e)};show();},true);
+  window.addEventListener('deviceorientation',e=>{ if(typeof e.webkitCompassHeading==='number') ios=e.webkitCompassHeading; r={alpha:e.alpha,beta:e.beta,gamma:e.gamma,abs:e.absolute,h:h(e)};show();},true);
+ }
+ $('go').onclick=()=>{
+  $('out').style.display='block'; $('go').style.display='none';
+  if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
+    DeviceOrientationEvent.requestPermission().then(s=>{ if(s==='granted') attach(); });
+  } else attach();
+ };
+</script></body></html>
