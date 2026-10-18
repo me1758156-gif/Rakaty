@@ -1825,7 +1825,17 @@
       if(!eventIsAbsolute && receivedAbsoluteHeading) return;
       if(eventIsAbsolute) receivedAbsoluteHeading = true;
       if(event.alpha === null || event.alpha === undefined) return;
-      heading = (360 - event.alpha) % 360; // Android: alpha is counter-clockwise from device's start orientation
+      // Heading that stays right however the phone is held: flat -> where the top edge
+      // points; upright/rolled -> where the back points (whichever is more horizontal).
+      heading = (360 - event.alpha) % 360;
+      if(typeof event.beta === 'number' && typeof event.gamma === 'number'){
+        const rd = Math.PI/180, a = event.alpha*rd, b = event.beta*rd, g = event.gamma*rd;
+        const topE = -Math.sin(a)*Math.cos(b),                       topN = Math.cos(a)*Math.cos(b);
+        const backE = -Math.sin(g)*Math.cos(a) - Math.cos(g)*Math.sin(b)*Math.sin(a);
+        const backN = -Math.sin(g)*Math.sin(a) + Math.cos(g)*Math.sin(b)*Math.cos(a);
+        const e = Math.hypot(topE,topN) >= Math.hypot(backE,backN) ? [topE,topN] : [backE,backN];
+        heading = (Math.atan2(e[0], e[1])*180/Math.PI + 360) % 360;
+      }
     }
     applyQiblaHeading(heading, typeof event.webkitCompassHeading === 'number' ? 'iOS compass' : (receivedAbsoluteHeading ? 'absolute' : 'relative'));
   }
