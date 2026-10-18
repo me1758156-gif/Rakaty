@@ -583,8 +583,6 @@
   <div class="qibla-panel" id="qiblaPanel" style="display:none;">
     <div class="camera-row">
       <button class="btn-secondary small" id="qiblaEnableBtn">Enable Qibla</button>
-      <button class="btn-secondary small" id="qiblaSetBtn" type="button">Set Qibla here</button>
-      <button class="btn-secondary small" id="qiblaResetBtn" type="button">Reset</button>
     </div>
     <div class="compass-wrap">
       <div class="compass-circle">
@@ -597,6 +595,7 @@
       </div>
     </div>
     <div class="cam-status" id="qiblaStatus">Qibla off · tap Enable Qibla, then hold your phone flat and rotate until the Kaaba icon points to the top</div>
+    <div class="cam-status" style="font-size:11px; opacity:.85; margin-top:8px;">Phone compasses can be wrong near metal, magnets or electronics. Always double-check the direction with a trusted source (a mosque's Qibla wall, or an official Qibla finder).</div>
   </div>
 
   <div class="prayer-next" id="prayerNext" role="button" tabindex="0" aria-label="Prayer times">
@@ -1791,12 +1790,18 @@
     return R * 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
 
-  // Compass gives MAGNETIC north; Qibla bearing is from TRUE north. DECL is the local
-  // magnetic declination (about +4.9 deg in Alexandria per NOAA). qiblaTrim is an optional
-  // one-tap calibration ("Set Qibla here") for a constant sensor offset.
-  const DECL = 4.9;
-  let qiblaTrim = 0, lastRawHeading = null;
-  try{ qiblaTrim = parseFloat(localStorage.getItem('qiblaTrim')) || 0; }catch(e){}
+  // The phone compass gives MAGNETIC north, but the Qibla bearing is from TRUE north,
+  // so we add the local magnetic declination. 4.9 deg east is the NOAA value for Alexandria;
+  // it is only applied within ~450 km of Alexandria (Egypt's range is roughly 4-6 deg).
+  // Anywhere else no correction is applied, and the panel says so.
+  let qiblaDecl = 0;
+  try{ localStorage.removeItem('qiblaTrim'); }catch(e){}
+  function declinationFor(lat, lon){
+    const R=6371, a1=toRad(lat), a2=toRad(31.2001), dφ=toRad(31.2001-lat), dλ=toRad(29.9187-lon);
+    const h=Math.sin(dφ/2)**2 + Math.cos(a1)*Math.cos(a2)*Math.sin(dλ/2)**2;
+    const km = R*2*Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
+    return km <= 450 ? 4.9 : 0;
+  }
   // Steady the needle: low-pass filter on the heading's unit vector (safe across 359->0),
   // then ignore changes under 1.5 deg. Does not change which heading is used, only jitter.
   let qS = null, qLast = null;
@@ -1806,13 +1811,12 @@
     if(qS===null) qS = {x:Math.cos(hr), y:Math.sin(hr)};
     else { qS.x += (Math.cos(hr)-qS.x)*0.12; qS.y += (Math.sin(hr)-qS.y)*0.12; }
     heading = (Math.atan2(qS.y, qS.x)*180/Math.PI + 360) % 360;
-    lastRawHeading = heading;
     if(qLast !== null){
       let dh = Math.abs(heading - qLast); if(dh > 180) dh = 360 - dh;
       if(dh < 1.5) return;
     }
     qLast = heading;
-    heading = (heading + DECL + qiblaTrim + 720) % 360;
+    heading = (heading + qiblaDecl + 720) % 360;
     const target = (qiblaBearing - heading + 360) % 360; // 0-359.999, wraps at 360
     // Unwrap: move the needle by the shortest signed delta from where it
     // currently sits, instead of jumping straight to the raw 0-360 value.
@@ -1896,18 +1900,6 @@
     qiblaStatus.textContent = 'Qibla off \u00b7 tap Enable Qibla, then hold your phone flat and rotate until the Kaaba icon points to the top';
   }
 
-  document.getElementById('qiblaSetBtn').onclick = ()=>{
-    if(qiblaBearing===null || lastRawHeading===null){ qiblaStatus.textContent = 'Tap Enable Qibla first, then face the true Qibla and tap Set Qibla here.'; return; }
-    let t = qiblaBearing - (lastRawHeading + DECL);
-    t = ((t + 540) % 360) - 180;                       // keep it within -180..180
-    qiblaTrim = t;
-    try{ localStorage.setItem('qiblaTrim', String(t)); }catch(e){}
-    qiblaStatus.textContent = 'Saved \u00b7 correction ' + Math.round(t) + '\u00b0. The needle should now point up while you face the Qibla.';
-  };
-  document.getElementById('qiblaResetBtn').onclick = ()=>{
-    qiblaTrim = 0; try{ localStorage.removeItem('qiblaTrim'); }catch(e){}
-    qiblaStatus.textContent = 'Correction cleared.';
-  };
   qiblaToggleBtn.onclick = ()=>{
     const opening = qiblaPanel.style.display === 'none';
     qiblaPanel.style.display = opening ? 'block' : 'none';
@@ -1924,10 +1916,11 @@
     navigator.geolocation.getCurrentPosition(pos=>{
       const { latitude, longitude } = pos.coords;
       qiblaBearing = computeQiblaBearing(latitude, longitude);
+      qiblaDecl = declinationFor(latitude, longitude);
       const distanceKm = Math.round(computeDistanceKm(latitude, longitude));
       qiblaActive = true;
       qiblaEnableBtn.textContent = 'Disable Qibla';
-      qiblaStatus.textContent = 'Qibla is ' + Math.round(qiblaBearing) + '\u00b0 from North \u00b7 ' + distanceKm + ' km to Mecca \u2014 hold phone flat and rotate';
+      qiblaStatus.textContent = 'Qibla is ' + Math.round(qiblaBearing) + '\u00b0 from North \u00b7 ' + distanceKm + ' km to Mecca \u2014 hold phone flat and rotate' + (qiblaDecl ? '' : ' \u00b7 note: no magnetic-north correction for this location');
       startQiblaCompass();
     }, err=>{
       qiblaStatus.textContent = 'Location access denied \u2014 Qibla needs your location to calculate the direction to Mecca.';
