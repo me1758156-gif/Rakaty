@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakah-tracker-v24';
+const CACHE_NAME = 'rakah-tracker-v25';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -12,7 +12,19 @@ const ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './icon-512-maskable.png',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  './fonts/amiri-arabic-400-normal.woff2',
+  './fonts/amiri-arabic-700-normal.woff2',
+  './fonts/amiri-latin-400-normal.woff2',
+  './fonts/amiri-latin-700-normal.woff2',
+  './fonts/fonts.css',
+  './fonts/jetbrains-mono-latin-400-normal.woff2',
+  './fonts/jetbrains-mono-latin-500-normal.woff2',
+  './fonts/manrope-latin-400-normal.woff2',
+  './fonts/manrope-latin-500-normal.woff2',
+  './fonts/manrope-latin-600-normal.woff2',
+  './fonts/manrope-latin-700-normal.woff2',
+  './fonts/manrope-latin-800-normal.woff2'
 ];
 
 self.addEventListener('install', (event) => {
