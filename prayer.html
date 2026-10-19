@@ -82,7 +82,7 @@
       var n=new Date(); n.setDate(n.getDate()+offset);
       return timesFor(n.getFullYear(),n.getMonth()+1,n.getDate(),loc.lat,loc.lng);
     }
-    function fmt(dt){ return dt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); }
+    function fmt(dt){ return dt.toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit',hour12:true}); }
     function pad(n){ return (n<10?'0':'')+n; }
 
     var el=function(id){return document.getElementById(id)};
