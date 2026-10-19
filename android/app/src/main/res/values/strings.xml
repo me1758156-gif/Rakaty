@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="appName">Rakah</string>
+    <string name="launcherName">Rakah</string>
+    <string name="widgetLabel">Prayer times</string>
+    <string name="hostName">me1758156-gif.github.io</string>
+    <string name="launchUrl">https://me1758156-gif.github.io/Rakaty/index.html</string>
+    <string name="webManifestUrl">https://me1758156-gif.github.io/Rakaty/manifest.json</string>
+    <string name="assetStatements">[{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://me1758156-gif.github.io\" } }]</string>
+</resources>

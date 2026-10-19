@@ -1,0 +1,28 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.me1758156_gif.twa'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.me1758156_gif.twa'
+        minSdk 24
+        targetSdk 34
+        versionCode 2
+        versionName '1.1.0'
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    implementation 'com.google.androidbrowserhelper:locationdelegation:1.1.1'
+}
