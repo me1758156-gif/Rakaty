@@ -7,6 +7,9 @@ on:
       - 'android/**'
       - '.github/workflows/android.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -37,3 +40,11 @@ jobs:
           name: rakah-unsigned-apk
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Publish the unsigned APK as a release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete unsigned-latest --yes --cleanup-tag || true
+          gh release create unsigned-latest android/app/build/outputs/apk/release/*.apk \
+            --title "Unsigned build (CI)" --notes "Unsigned APK built by CI. It must be signed before it can be installed." --prerelease
