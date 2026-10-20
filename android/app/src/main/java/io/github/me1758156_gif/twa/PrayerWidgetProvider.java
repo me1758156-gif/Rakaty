@@ -2,9 +2,6 @@ package io.github.me1758156_gif.twa;
 
 import android.Manifest;
 import android.app.AlarmManager;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
@@ -29,8 +26,6 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
 
     static final String ACTION_REFRESH = "io.github.me1758156_gif.twa.WIDGET_REFRESH";
     static final String PREFS = "widget_prefs";
-    static final String CHANNEL = "next_prayer";
-    static final int NOTIF_ID = 1001;
     // Alexandria, Egypt, used until the phone gives a real location
     static final double DEFAULT_LAT = 31.2001, DEFAULT_LNG = 29.9187;
 
@@ -43,7 +38,6 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         for (int id : ids) manager.updateAppWidget(id, build(context));
-        postNotification(context);
         scheduleNext(context);
     }
 
@@ -61,8 +55,6 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
     public void onDisabled(Context context) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am != null) am.cancel(refreshIntent(context));
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm != null) nm.cancel(NOTIF_ID);
     }
 
     @Override
@@ -81,7 +73,6 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
         if (ids.length == 0) return;
         RemoteViews rv = build(context);
         for (int id : ids) mgr.updateAppWidget(id, rv);
-        postNotification(context);
         scheduleNext(context);
     }
 
@@ -177,59 +168,6 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
         SpannableString sp = new SpannableString(txt);
         sp.setSpan(new RelativeSizeSpan(0.72f), txt.length() - 2, txt.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         return sp;
-    }
-
-    /** Next of the five prayers (Sunrise is not a prayer): {index, epoch millis}. */
-    private static long[] nextPrayer(Context c) {
-        double[] loc = location(c);
-        long now = System.currentTimeMillis();
-        long[] t = timesForDay(Calendar.getInstance(), loc);
-        int[] prayers = {PrayerTimes.FAJR, PrayerTimes.DHUHR, PrayerTimes.ASR, PrayerTimes.MAGHRIB, PrayerTimes.ISHA};
-        for (int p : prayers) {
-            if (t[p] > now) return new long[]{p, t[p]};
-        }
-        Calendar tomorrow = Calendar.getInstance();
-        tomorrow.add(Calendar.DAY_OF_MONTH, 1);
-        long[] tt = timesForDay(tomorrow, loc);
-        return new long[]{PrayerTimes.FAJR, tt[PrayerTimes.FAJR]};
-    }
-
-    /** Lock-screen friendly notification: "Next prayer: Asr, at 3:57 PM" with a live countdown. */
-    static void postNotification(Context c) {
-        try {
-            NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm == null) return;
-            if (Build.VERSION.SDK_INT >= 26) {
-                NotificationChannel ch = new NotificationChannel(CHANNEL, "Next prayer countdown", NotificationManager.IMPORTANCE_LOW);
-                ch.setShowBadge(false);
-                ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-                nm.createNotificationChannel(ch);
-            }
-            long[] n = nextPrayer(c);
-            Calendar cal = Calendar.getInstance();
-            cal.setTimeInMillis(n[1]);
-            int h = cal.get(Calendar.HOUR);
-            if (h == 0) h = 12;
-            String at = h + ":" + (cal.get(Calendar.MINUTE) < 10 ? "0" : "") + cal.get(Calendar.MINUTE)
-                    + (cal.get(Calendar.AM_PM) == Calendar.AM ? " AM" : " PM");
-            Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CHANNEL) : new Notification.Builder(c);
-            b.setSmallIcon(R.drawable.ic_notification_icon)
-                    .setContentTitle("Next prayer: " + LABEL[(int) n[0]])
-                    .setContentText("at " + at)
-                    .setWhen(n[1])
-                    .setShowWhen(true)
-                    .setUsesChronometer(true)
-                    .setChronometerCountDown(true)
-                    .setOngoing(true)
-                    .setOnlyAlertOnce(true)
-                    .setVisibility(Notification.VISIBILITY_PUBLIC)
-                    .setCategory(Notification.CATEGORY_STATUS);
-            Intent launch = c.getPackageManager().getLaunchIntentForPackage(c.getPackageName());
-            if (launch != null) {
-                b.setContentIntent(PendingIntent.getActivity(c, 2, launch, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
-            }
-            nm.notify(NOTIF_ID, b.build());
-        } catch (Exception ignored) { }
     }
 
     private static PendingIntent refreshIntent(Context c) {

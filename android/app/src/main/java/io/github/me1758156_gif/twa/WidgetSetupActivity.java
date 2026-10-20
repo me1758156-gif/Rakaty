@@ -22,17 +22,10 @@ public class WidgetSetupActivity extends Activity {
         }
         boolean have = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
                 || checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-        if (have && Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 8);
-        } else if (have || Build.VERSION.SDK_INT < 23) {
+        if (have || Build.VERSION.SDK_INT < 23) {
             finishOk();
         } else {
-            java.util.ArrayList<String> want = new java.util.ArrayList<>();
-            want.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-            want.add(Manifest.permission.ACCESS_FINE_LOCATION);
-            if (Build.VERSION.SDK_INT >= 33) want.add("android.permission.POST_NOTIFICATIONS");
-            requestPermissions(want.toArray(new String[0]), 7);
+            requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, 7);
         }
     }
 
