@@ -49,10 +49,15 @@ final class PrayerTimes {
         double[] h = new double[6];
         h[FAJR] = noon - ha(19.5, lat, decl);
         h[SUNRISE] = noon - ha(0.833, lat, decl);
-        h[DHUHR] = noon + 0.0334;
+        h[DHUHR] = noon;
         h[ASR] = noon + ha(asrAngle, lat, decl);
-        h[MAGHRIB] = noon + ha(0.833, lat, decl) + 0.0334;
+        h[MAGHRIB] = noon + ha(0.833, lat, decl);
         h[ISHA] = noon + ha(17.5, lat, decl);
+
+        // Whole minutes, like published timetables: Fajr rounds up (never early), the rest drop the seconds
+        for (int i = 0; i < 6; i++) {
+            h[i] = (i == FAJR) ? Math.ceil(h[i] * 60 - 1e-9) / 60 : Math.floor(h[i] * 60 + 1e-9) / 60;
+        }
 
         Calendar c = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         c.clear();

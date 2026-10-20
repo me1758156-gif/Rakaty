@@ -1985,7 +1985,9 @@
       var noon=12-sp.eq-lng/15;
       function ha(a){ var v=(-sin(a)-sin(lat)*sin(sp.decl))/(cos(lat)*cos(sp.decl)); v=Math.max(-1,Math.min(1,v)); return Math.acos(v)*D/15; }
       var asrAngle=-Math.atan(1/(1+tan(Math.abs(lat-sp.decl))))*D;
-      var h={ fajr:noon-ha(19.5), sunrise:noon-ha(0.833), dhuhr:noon+0.0334, asr:noon+ha(asrAngle), maghrib:noon+ha(0.833)+0.0334, isha:noon+ha(17.5) };
+      var h={ fajr:noon-ha(19.5), sunrise:noon-ha(0.833), dhuhr:noon, asr:noon+ha(asrAngle), maghrib:noon+ha(0.833), isha:noon+ha(17.5) };
+      // Whole minutes, like published timetables: Fajr rounds up (never early), the rest drop the seconds
+      for(var q in h) h[q] = (q==='fajr') ? Math.ceil(h[q]*60-1e-9)/60 : Math.floor(h[q]*60+1e-9)/60;
       var base=Date.UTC(y,m-1,d), out={};
       for(var k in h) out[k]=new Date(base+h[k]*3600000);
       return out;
