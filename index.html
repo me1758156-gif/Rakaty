@@ -688,6 +688,7 @@
       <div class="cam-status" id="motionCalStatus" style="font-size:0.85em; opacity:0.85;">Personal calibration: not set for any position yet</div>
       <div class="brightness-meter"><div class="brightness-fill" id="tiltFill"></div></div>
       <div class="cam-status" id="motionStatus">Motion off · pocket the phone upright, stand still, then tap Enable Motion</div>
+      <div class="cam-status" id="motionDebug" style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.5; white-space:pre-wrap; opacity:.9;"></div>
     </div>
 
     <div class="ring-wrap">
@@ -1392,13 +1393,21 @@
   // "deep" tilt (degrees away from standing baseline) required to count as
   // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
   const MOTION_SENSITIVITY_DEG = { low:70, medium:55, high:40 };
-  const MIN_TILT_MS = 400; // must stay in the Sujud posture this long before it even counts as a Sujud in progress
-  const MIN_DOWN_HOLD_MS = 700; // filters out an instant flick past the threshold (a stumble, sitting down abruptly) without punishing a normal-paced Sujud
+  const MIN_TILT_MS = 300; // must stay in the Sujud posture this long before it even counts as a Sujud in progress
+  const MIN_DOWN_HOLD_MS = 450; // filters out an instant flick past the threshold (a stumble, sitting down abruptly) without punishing a normal-paced Sujud
   const MAX_DOWN_HOLD_MS = 12000; // a real Sujud doesn't last this long — beyond this it's almost certainly sitting (Tashahhud), so stop waiting and don't count it
-  const MOTION_COOLDOWN_MS = 1500;
+  const MOTION_COOLDOWN_MS = 1100;
   let motionDownConfirmedAt = null;
-  const MOTION_MIN_UP_MS = 400; // after coming up, stay up this long before a new Sujud can begin (stops posture flicker while moving between Sujud and sitting)
+  const MOTION_MIN_UP_MS = 250; // after coming up, stay up this long before a new Sujud can begin (stops posture flicker while moving between Sujud and sitting)
   let motionUpSince = 0;
+  // Live readout so over/under-counting can be tuned from real numbers
+  const motionDebug = document.getElementById('motionDebug');
+  let motionEvents = [], motionDebugAt = 0;
+  function motionLog(msg){
+    const t = new Date().toLocaleTimeString('en-GB');
+    motionEvents.push(t + '  ' + msg);
+    if(motionEvents.length > 8) motionEvents.shift();
+  }
 
   function onDeviceMotion(e){
     const g = e.accelerationIncludingGravity;
@@ -1580,6 +1589,11 @@
     }
     tiltFill.style.width = Math.max(0, Math.min(100, (smoothedTiltDelta/enterThreshold)*100)) + '%';
     const now = Date.now();
+    if(now - motionDebugAt > 250 && motionDebug){
+      motionDebugAt = now;
+      motionDebug.textContent = 'tilt ' + smoothedTiltDelta.toFixed(0) + '\u00b0  enter ' + enterThreshold.toFixed(0) + '\u00b0  exit ' + exitThreshold.toFixed(0) + '\u00b0  ' + motionState +
+        (useDirection ? '  posture=' + nearestPosture(smoothedGravityVec, profile) : '') + '  mode=' + motionSensitivity.value + '\n' + motionEvents.join('\n');
+    }
     const nearest = useDirection ? nearestPosture(smoothedGravityVec, profile) : null;
     const isSujudNow = useDirection ? (nearest === 'sujud') : (smoothedTiltDelta > enterThreshold);
     const isUpNow = useDirection ? (nearest !== 'sujud') : (smoothedTiltDelta < exitThreshold);
@@ -1590,6 +1604,7 @@
         if(now - motionTiltSince >= MIN_TILT_MS){
           motionState = 'down';
           motionDownConfirmedAt = now;
+          motionLog('DOWN (tilt ' + smoothedTiltDelta.toFixed(0) + ')');
           motionStatus.textContent = 'Deep bow detected — in Sujud…';
           motionStatus.classList.add('dark');
         }
@@ -1624,12 +1639,14 @@
       const downTooLong = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MAX_DOWN_HOLD_MS;
       if(downTooLong){
         motionState = 'up'; motionUpSince = now;
+        motionLog('UP: stayed down too long (>12s), not counted');
         motionStatus.classList.remove('dark');
         motionStatus.textContent = 'Watching for Sujud…';
       } else if(isUpNow){
         const heldLongEnough = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MIN_DOWN_HOLD_MS;
         motionState = 'up'; motionUpSince = now;
         motionStatus.classList.remove('dark');
+        motionLog('UP after ' + (now - motionDownConfirmedAt) + 'ms' + (!heldLongEnough ? ' too brief, not counted' : (now - motionLastEventTime <= MOTION_COOLDOWN_MS ? ' too soon after last count, not counted' : ' COUNTED')));
         if(!heldLongEnough){
           // Too brief to be a real Sujud (a stumble, sitting down abruptly,
           // adjusting the phone) — don't count it, and skip the cooldown
