@@ -21,7 +21,7 @@ import android.widget.RemoteViews;
 
 import java.util.Calendar;
 
-/** Home-screen widget: six prayer times in a glass-blue strip, next prayer highlighted. */
+/** Home-screen widget: six prayer times on clear glass; the prayer whose time it is right now is highlighted. */
 public class PrayerWidgetProvider extends AppWidgetProvider {
 
     static final String ACTION_REFRESH = "io.github.me1758156_gif.twa.WIDGET_REFRESH";
@@ -107,29 +107,33 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
                 day.get(Calendar.DAY_OF_MONTH), loc[0], loc[1]);
     }
 
-    /** Result: times to display + index of the next prayer + epoch of the next change. */
-    private static final class State { long[] times; int next; long nextAt; }
+    /** Today's times, which prayer's time it is right now, and when to refresh next. */
+    private static final class State { long[] times; int cur; long nextAt; }
 
     private static State state(Context c) {
         double[] loc = location(c);
         long now = System.currentTimeMillis();
-        Calendar day = Calendar.getInstance();
-        long[] today = timesForDay(day, loc);
+        long[] t = timesForDay(Calendar.getInstance(), loc);
         State s = new State();
-        if (now >= today[PrayerTimes.ISHA]) {
-            // after Isha: show tomorrow, next prayer is tomorrow's Fajr
-            day.add(Calendar.DAY_OF_MONTH, 1);
-            s.times = timesForDay(day, loc);
-            s.next = PrayerTimes.FAJR;
-            s.nextAt = s.times[PrayerTimes.FAJR];
-        } else {
-            s.times = today;
-            s.next = PrayerTimes.FAJR;
-            for (int i = 0; i < 6; i++) {
-                if (today[i] > now) { s.next = i; break; }
-            }
-            s.nextAt = today[s.next];
+        s.times = t;
+        // The current time-slot is the last one that has started. Before Fajr it is still
+        // Isha's time (from last night), so Isha stays highlighted until Fajr comes in.
+        s.cur = PrayerTimes.ISHA;
+        for (int i = 0; i < 6; i++) {
+            if (t[i] <= now) s.cur = i;
         }
+        long next = -1;
+        for (int i = 0; i < 6; i++) {
+            if (t[i] > now) { next = t[i]; break; }
+        }
+        Calendar mid = Calendar.getInstance();
+        mid.set(Calendar.HOUR_OF_DAY, 0);
+        mid.set(Calendar.MINUTE, 0);
+        mid.set(Calendar.SECOND, 0);
+        mid.set(Calendar.MILLISECOND, 0);
+        mid.add(Calendar.DAY_OF_MONTH, 1);
+        long midnight = mid.getTimeInMillis();
+        s.nextAt = (next == -1 || midnight < next) ? midnight : next;
         return s;
     }
 
@@ -138,13 +142,13 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
         State s = state(c);
         Calendar cal = Calendar.getInstance();
         for (int i = 0; i < 6; i++) {
-            boolean hl = i == s.next;
+            boolean hl = i == s.cur;
             rv.setTextViewText(NAME[i], LABEL[i]);
             cal.setTimeInMillis(s.times[i]);
             rv.setTextViewText(TIME[i], format(cal));
             rv.setInt(COL[i], "setBackgroundResource", hl ? R.drawable.widget_hl : 0);
-            rv.setInt(ICON[i], "setColorFilter", hl ? 0xFFFFFFFF : 0xFF9CCBFF);
-            rv.setTextColor(NAME[i], hl ? 0xFFFFFFFF : 0xFFDCE9FF);
+            rv.setInt(ICON[i], "setColorFilter", hl ? 0xFFFFFFFF : 0xFFEAF2FF);
+            rv.setTextColor(NAME[i], hl ? 0xFFFFFFFF : 0xEBF0F6FF);
             rv.setTextColor(TIME[i], 0xFFFFFFFF);
         }
         Intent launch = c.getPackageManager().getLaunchIntentForPackage(c.getPackageName());

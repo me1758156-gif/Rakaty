@@ -23,8 +23,12 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="Fajr"
-                android:textColor="#DCE9FF"
+                android:textColor="#F0F6FF"
                 android:textSize="12sp" />
             <ImageView
                 android:id="@+id/icon0"
@@ -40,6 +44,10 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="--:--"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp" />
@@ -60,8 +68,12 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="Sunrise"
-                android:textColor="#DCE9FF"
+                android:textColor="#F0F6FF"
                 android:textSize="12sp" />
             <ImageView
                 android:id="@+id/icon1"
@@ -77,6 +89,10 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="--:--"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp" />
@@ -97,8 +113,12 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="Dhuhr"
-                android:textColor="#DCE9FF"
+                android:textColor="#F0F6FF"
                 android:textSize="12sp" />
             <ImageView
                 android:id="@+id/icon2"
@@ -114,6 +134,10 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="--:--"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp" />
@@ -134,8 +158,12 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="Asr"
-                android:textColor="#DCE9FF"
+                android:textColor="#F0F6FF"
                 android:textSize="12sp" />
             <ImageView
                 android:id="@+id/icon3"
@@ -151,6 +179,10 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="--:--"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp" />
@@ -171,8 +203,12 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="Maghrib"
-                android:textColor="#DCE9FF"
+                android:textColor="#F0F6FF"
                 android:textSize="12sp" />
             <ImageView
                 android:id="@+id/icon4"
@@ -188,6 +224,10 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="--:--"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp" />
@@ -208,8 +248,12 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="Isha"
-                android:textColor="#DCE9FF"
+                android:textColor="#F0F6FF"
                 android:textSize="12sp" />
             <ImageView
                 android:id="@+id/icon5"
@@ -225,6 +269,10 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="3"
                 android:text="--:--"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp" />
