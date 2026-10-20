@@ -1394,12 +1394,13 @@
   // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
   const MOTION_SENSITIVITY_DEG = { low:70, medium:55, high:40 };
   const MIN_TILT_MS = 300; // must stay in the Sujud posture this long before it even counts as a Sujud in progress
-  const MIN_DOWN_HOLD_MS = 450; // filters out an instant flick past the threshold (a stumble, sitting down abruptly) without punishing a normal-paced Sujud
+  const MIN_DOWN_HOLD_MS = 600; // filters out an instant flick past the threshold (a stumble, sitting down abruptly) without punishing a normal-paced Sujud
   const MAX_DOWN_HOLD_MS = 12000; // a real Sujud doesn't last this long — beyond this it's almost certainly sitting (Tashahhud), so stop waiting and don't count it
   const MOTION_COOLDOWN_MS = 1100;
   let motionDownConfirmedAt = null;
   const MOTION_MIN_UP_MS = 250; // after coming up, stay up this long before a new Sujud can begin (stops posture flicker while moving between Sujud and sitting)
   let motionUpSince = 0;
+  let motionDownCounted = false;
   // Live readout so over/under-counting can be tuned from real numbers
   const motionDebug = document.getElementById('motionDebug');
   let motionEvents = [], motionDebugAt = 0;
@@ -1604,6 +1605,7 @@
         if(now - motionTiltSince >= MIN_TILT_MS){
           motionState = 'down';
           motionDownConfirmedAt = now;
+          motionDownCounted = false;
           motionLog('DOWN (tilt ' + smoothedTiltDelta.toFixed(0) + ')');
           motionStatus.textContent = 'Deep bow detected — in Sujud…';
           motionStatus.classList.add('dark');
@@ -1631,36 +1633,29 @@
         motionStatus.textContent = 'Watching for Sujud…';
       }
     } else { // motionState === 'down'
-      // A real Sujud is held for a few seconds, not tens of seconds. If
-      // the tilt has stayed elevated far longer than any real Sujud would
-      // (e.g. sitting through Tashahhud, where the tilt might never dip
-      // back below the exit threshold on its own), treat it as NOT a
-      // Sujud and drop back to watching, rather than waiting forever.
-      const downTooLong = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MAX_DOWN_HOLD_MS;
-      if(downTooLong){
-        motionState = 'up'; motionUpSince = now;
-        motionLog('UP: stayed down too long (>12s), not counted');
-        motionStatus.classList.remove('dark');
-        motionStatus.textContent = 'Watching for Sujud…';
-      } else if(isUpNow){
-        const heldLongEnough = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MIN_DOWN_HOLD_MS;
-        motionState = 'up'; motionUpSince = now;
-        motionStatus.classList.remove('dark');
-        motionLog('UP after ' + (now - motionDownConfirmedAt) + 'ms' + (!heldLongEnough ? ' too brief, not counted' : (now - motionLastEventTime <= MOTION_COOLDOWN_MS ? ' too soon after last count, not counted' : ' COUNTED')));
-        if(!heldLongEnough){
-          // Too brief to be a real Sujud (a stumble, sitting down abruptly,
-          // adjusting the phone) — don't count it, and skip the cooldown
-          // too so a genuine Sujud right after isn't missed.
-          motionStatus.textContent = 'Watching for Sujud…';
-        } else if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
+      // Count the Sujud as soon as it has been held long enough, instead of
+      // waiting for you to come back up. That way a Sujud that flows straight
+      // into sitting (the last Sujud before Tashahhud) is still counted, and
+      // sitting for a long Tashahhud can never count again: one posture
+      // span = one count, until the phone really returns to the "up" range.
+      const heldMs = motionDownConfirmedAt!==null ? (now - motionDownConfirmedAt) : 0;
+      if(!motionDownCounted && heldMs >= MIN_DOWN_HOLD_MS){
+        motionDownCounted = true;
+        if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
           motionLastEventTime = now;
-          motionStatus.textContent = 'Sujud counted · watching…';
+          motionLog('COUNTED after ' + heldMs + 'ms held');
+          motionStatus.textContent = 'Sujud counted \u00b7 watching\u2026';
           addCount();
         } else {
-          motionStatus.textContent = 'Watching for Sujud…';
+          motionLog('held ' + heldMs + 'ms but too soon after last count, not counted');
         }
       }
-      // else: still down, or within the hysteresis band — keep waiting
+      if(isUpNow){
+        motionState = 'up'; motionUpSince = now;
+        motionStatus.classList.remove('dark');
+        motionLog('UP after ' + heldMs + 'ms' + (motionDownCounted ? '' : ' too brief, not counted'));
+        if(!motionDownCounted) motionStatus.textContent = 'Watching for Sujud\u2026';
+      }
     }
   }
 
