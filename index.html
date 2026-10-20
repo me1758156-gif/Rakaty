@@ -650,7 +650,7 @@
           <option value="environment">Back camera (phone screen‑down)</option>
         </select>
       </div>
-      <div class="camera-row">
+      <div class="camera-row" style="display:none;">
         <label class="cam-label">Sensitivity</label>
         <select id="camSensitivity">
           <option value="low">Low</option>
@@ -679,16 +679,16 @@
         </select>
         <button class="btn-secondary small" id="motionRecalBtn">Recalibrate</button>
       </div>
-      <div class="camera-row" id="motionCalRow" style="flex-wrap:wrap; gap:6px;">
+      <div class="camera-row" id="motionCalRow" style="flex-wrap:wrap; gap:6px; display:none;">
         <button class="btn-secondary small" id="calStandBtn">Calibrate Standing</button>
         <button class="btn-secondary small" id="calSujudBtn">Calibrate Sujud</button>
         <button class="btn-secondary small" id="calJalsaBtn">Calibrate Sit Between Sujud</button>
         <button class="btn-secondary small" id="calSitBtn">Calibrate Tashahhud Sitting</button>
       </div>
-      <div class="cam-status" id="motionCalStatus" style="font-size:0.85em; opacity:0.85;">Personal calibration: not set for any position yet</div>
+      <div class="cam-status" id="motionCalStatus" style="font-size:0.85em; opacity:0.85; display:none;">Personal calibration: not set for any position yet</div>
       <div class="brightness-meter"><div class="brightness-fill" id="tiltFill"></div></div>
       <div class="cam-status" id="motionStatus">Motion off · pocket the phone upright, stand still, then tap Enable Motion</div>
-      <div class="cam-status" id="motionDebug" style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.5; white-space:pre-wrap; opacity:.9;"></div>
+      <div class="cam-status" id="motionDebug" style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.5; white-space:pre-wrap; opacity:.9; display:none;"></div>
     </div>
 
     <div class="ring-wrap">
@@ -1370,6 +1370,7 @@
   const motionEnableBtn = document.getElementById('motionEnableBtn');
   const motionRecalBtn = document.getElementById('motionRecalBtn');
   const motionSensitivity = document.getElementById('motionSensitivity');
+  motionSensitivity.value = 'medium';
   const calStandBtn = document.getElementById('calStandBtn');
   const calSujudBtn = document.getElementById('calSujudBtn');
   const calJalsaBtn = document.getElementById('calJalsaBtn');
@@ -1403,6 +1404,7 @@
   let motionDownCounted = false;
   // Live readout so over/under-counting can be tuned from real numbers
   const motionDebug = document.getElementById('motionDebug');
+  if(motionDebug && /[?&]debug\b/.test(location.search)) motionDebug.style.display = 'block'; // open the app page with ?debug to see the motion readout again
   let motionEvents = [], motionDebugAt = 0;
   function motionLog(msg){
     const t = new Date().toLocaleTimeString('en-GB');
