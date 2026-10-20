@@ -1392,11 +1392,13 @@
   // "deep" tilt (degrees away from standing baseline) required to count as
   // Sujud rather than Ruku or an incidental jostle. Lower = more sensitive.
   const MOTION_SENSITIVITY_DEG = { low:70, medium:55, high:40 };
-  const MIN_TILT_MS = 250;
-  const MIN_DOWN_HOLD_MS = 250; // filters out an instant flick past the threshold (a stumble, sitting down abruptly) without punishing a normal-paced Sujud
+  const MIN_TILT_MS = 400; // must stay in the Sujud posture this long before it even counts as a Sujud in progress
+  const MIN_DOWN_HOLD_MS = 700; // filters out an instant flick past the threshold (a stumble, sitting down abruptly) without punishing a normal-paced Sujud
   const MAX_DOWN_HOLD_MS = 12000; // a real Sujud doesn't last this long — beyond this it's almost certainly sitting (Tashahhud), so stop waiting and don't count it
-  const MOTION_COOLDOWN_MS = 900;
+  const MOTION_COOLDOWN_MS = 1500;
   let motionDownConfirmedAt = null;
+  const MOTION_MIN_UP_MS = 400; // after coming up, stay up this long before a new Sujud can begin (stops posture flicker while moving between Sujud and sitting)
+  let motionUpSince = 0;
 
   function onDeviceMotion(e){
     const g = e.accelerationIncludingGravity;
@@ -1583,7 +1585,7 @@
     const isUpNow = useDirection ? (nearest !== 'sujud') : (smoothedTiltDelta < exitThreshold);
 
     if(motionState==='up'){
-      if(isSujudNow){
+      if(isSujudNow && (now - motionUpSince) >= MOTION_MIN_UP_MS){
         if(motionTiltSince===null) motionTiltSince = now;
         if(now - motionTiltSince >= MIN_TILT_MS){
           motionState = 'down';
@@ -1621,12 +1623,12 @@
       // Sujud and drop back to watching, rather than waiting forever.
       const downTooLong = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MAX_DOWN_HOLD_MS;
       if(downTooLong){
-        motionState = 'up';
+        motionState = 'up'; motionUpSince = now;
         motionStatus.classList.remove('dark');
         motionStatus.textContent = 'Watching for Sujud…';
       } else if(isUpNow){
         const heldLongEnough = motionDownConfirmedAt!==null && (now - motionDownConfirmedAt) >= MIN_DOWN_HOLD_MS;
-        motionState = 'up';
+        motionState = 'up'; motionUpSince = now;
         motionStatus.classList.remove('dark');
         if(!heldLongEnough){
           // Too brief to be a real Sujud (a stumble, sitting down abruptly,
