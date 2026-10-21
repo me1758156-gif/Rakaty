@@ -1402,14 +1402,16 @@
   const MOTION_MIN_UP_MS = 250; // after coming up, stay up this long before a new Sujud can begin (stops posture flicker while moving between Sujud and sitting)
   let motionUpSince = 0;
   let motionDownCounted = false;
+  let motionPeakTilt = 0;
   // Live readout so over/under-counting can be tuned from real numbers
   const motionDebug = document.getElementById('motionDebug');
   if(motionDebug && /[?&]debug\b/.test(location.search)) motionDebug.style.display = 'block'; // open the app page with ?debug to see the motion readout again
   let motionEvents = [], motionDebugAt = 0;
   function motionLog(msg){
-    const t = new Date().toLocaleTimeString('en-GB');
+    const d = new Date();
+    const t = d.toLocaleTimeString('en-GB') + '.' + String(d.getMilliseconds()).padStart(3,'0');
     motionEvents.push(t + '  ' + msg);
-    if(motionEvents.length > 8) motionEvents.shift();
+    if(motionEvents.length > 14) motionEvents.shift();
   }
 
   function onDeviceMotion(e){
@@ -1608,6 +1610,7 @@
           motionState = 'down';
           motionDownConfirmedAt = now;
           motionDownCounted = false;
+          motionPeakTilt = smoothedTiltDelta;
           motionLog('DOWN (tilt ' + smoothedTiltDelta.toFixed(0) + ')');
           motionStatus.textContent = 'Deep bow detected — in Sujud…';
           motionStatus.classList.add('dark');
@@ -1641,11 +1644,12 @@
       // sitting for a long Tashahhud can never count again: one posture
       // span = one count, until the phone really returns to the "up" range.
       const heldMs = motionDownConfirmedAt!==null ? (now - motionDownConfirmedAt) : 0;
+      motionPeakTilt = Math.max(motionPeakTilt, smoothedTiltDelta);
       if(!motionDownCounted && heldMs >= MIN_DOWN_HOLD_MS){
         motionDownCounted = true;
         if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
           motionLastEventTime = now;
-          motionLog('COUNTED after ' + heldMs + 'ms held');
+          motionLog('COUNTED after ' + heldMs + 'ms held, tilt ' + smoothedTiltDelta.toFixed(0));
           motionStatus.textContent = 'Sujud counted \u00b7 watching\u2026';
           addCount();
         } else {
@@ -1655,12 +1659,17 @@
       if(isUpNow){
         motionState = 'up'; motionUpSince = now;
         motionStatus.classList.remove('dark');
-        motionLog('UP after ' + heldMs + 'ms' + (motionDownCounted ? '' : ' too brief, not counted'));
+        motionLog('UP after ' + heldMs + 'ms, peak ' + motionPeakTilt.toFixed(0) + ', tilt ' + smoothedTiltDelta.toFixed(0) + (motionDownCounted ? '' : ' too brief, not counted'));
         if(!motionDownCounted) motionStatus.textContent = 'Watching for Sujud\u2026';
       }
     }
   }
 
+  let dbgTaps = 0, dbgTimer = null;
+  motionStatus.addEventListener('click', ()=>{
+    dbgTaps++; clearTimeout(dbgTimer); dbgTimer = setTimeout(()=>{ dbgTaps = 0; }, 2500);
+    if(dbgTaps >= 5){ dbgTaps = 0; motionDebug.style.display = (motionDebug.style.display === 'block') ? 'none' : 'block'; }
+  });
   motionEnableBtn.onclick = ()=> motionActive ? stopMotion() : startMotion();
   motionRecalBtn.onclick = ()=>{
     if(!motionActive){ flashStatus('Enable motion first'); return; }
