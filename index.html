@@ -669,7 +669,7 @@
       <div class="camera-row">
         <button class="btn-secondary small" id="motionEnableBtn">Enable Motion</button>
       </div>
-      <div class="camera-row">
+      <div class="camera-row" style="display:none;">
         <label class="cam-label">Sensitivity</label>
         <select id="motionSensitivity">
           <option value="low">Low</option>
@@ -1406,7 +1406,7 @@
   // Live readout so over/under-counting can be tuned from real numbers
   const motionDebug = document.getElementById('motionDebug');
   if(motionDebug && /[?&]debug\b/.test(location.search)) motionDebug.style.display = 'block'; // open the app page with ?debug to see the motion readout again
-  let motionEvents = [], motionDebugAt = 0;
+  let motionEvents = [], motionDebugAt = 0, motionTrace = [], motionTraceAt = 0;
   function motionLog(msg){
     const d = new Date();
     const t = d.toLocaleTimeString('en-GB') + '.' + String(d.getMilliseconds()).padStart(3,'0');
@@ -1594,10 +1594,15 @@
     }
     tiltFill.style.width = Math.max(0, Math.min(100, (smoothedTiltDelta/enterThreshold)*100)) + '%';
     const now = Date.now();
+    if(now - motionTraceAt >= 400){
+      motionTraceAt = now;
+      motionTrace.push(Math.round(smoothedTiltDelta));
+      if(motionTrace.length > 56) motionTrace.shift();
+    }
     if(now - motionDebugAt > 250 && motionDebug){
       motionDebugAt = now;
       motionDebug.textContent = 'tilt ' + smoothedTiltDelta.toFixed(0) + '\u00b0  enter ' + enterThreshold.toFixed(0) + '\u00b0  exit ' + exitThreshold.toFixed(0) + '\u00b0  ' + motionState +
-        (useDirection ? '  posture=' + nearestPosture(smoothedGravityVec, profile) : '') + '  mode=' + motionSensitivity.value + '\n' + motionEvents.join('\n');
+        (useDirection ? '  posture=' + nearestPosture(smoothedGravityVec, profile) : '') + '\n' + motionEvents.slice(-6).join('\n') + '\ntilt every 0.4s (old to new):\n' + Array.from({length:7},(_,i)=>motionTrace.slice(i*8,i*8+8).join(' ')).join('\n');
     }
     const nearest = useDirection ? nearestPosture(smoothedGravityVec, profile) : null;
     const isSujudNow = useDirection ? (nearest === 'sujud') : (smoothedTiltDelta > enterThreshold);
