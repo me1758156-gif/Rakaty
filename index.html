@@ -434,6 +434,7 @@
     font-family:'JetBrains Mono', monospace;
     font-size:10px; letter-spacing:.2em; opacity:.7;
   }
+  .sujud-mini.warn span, .sujud-mini.warn small{ color:#ff8a7a; opacity:1; }
   .rakah-arabic{
     font-family:'Amiri', serif;
     font-size:19px;
@@ -710,7 +711,7 @@
       <div class="center-plate" id="centerPlate">
         <div class="rakah-label">Rakah</div>
         <div class="rakah-number" id="rakahNum">—</div>
-        <div class="sujud-mini" id="sujudMini" style="display:none;"><span id="sujudMiniNum">0</span><small>SUJUD</small></div>
+        <div class="sujud-mini" id="sujudMini" style="display:none;"><span id="sujudMiniNum">0</span><small id="sujudMiniLabel">SUJUD</small></div>
         <div class="rakah-arabic" id="rakahArabic">استعد</div>
         <div class="rakah-of" id="rakahOf">Select a prayer</div>
         <div class="phase-label" id="phaseLabel"></div>
@@ -775,6 +776,7 @@
   const phaseLabelAr = document.getElementById('phaseLabelAr');
   const sujudMini = document.getElementById('sujudMini');
   const sujudMiniNum = document.getElementById('sujudMiniNum');
+  const sujudMiniLabel = document.getElementById('sujudMiniLabel');
   const statusLine = document.getElementById('statusLine');
   const statusText = document.getElementById('statusText');
   const listenBtn = document.getElementById('listenBtn');
@@ -1473,6 +1475,17 @@
   const SUJUD_FLAT_DEG = 10;                        // ...within this much wobble
   const SUJUD_RELEASE_HI = 56, SUJUD_RELEASE_LO = 14; // leaving the range re-arms detection
   let motionHist = [];
+  // Mistake alerts (Motion mode): a long triple buzz + red note under the number
+  let warnTimer = null, warnedAtCount = -1;
+  let sitForCount = -1, sitSince = 0, sitSeen = false;
+  function motionWarn(text){
+    if(navigator.vibrate) navigator.vibrate([350,120,350,120,350]);
+    sujudMini.classList.add('warn');
+    sujudMiniLabel.textContent = text;
+    clearTimeout(warnTimer);
+    warnTimer = setTimeout(()=>{ sujudMini.classList.remove('warn'); sujudMiniLabel.textContent = 'SUJUD'; }, 6000);
+    motionLog('WARNING: ' + text);
+  }
   // A real Sujud is always entered from a big tilt (kneeling down, or coming from sitting) without
   // passing through "standing" first. Standing up and settling at a moderate tilt afterwards must
   // never count as a Sujud, so a Sujud only counts shortly after such a big tilt, and not once the
@@ -1732,11 +1745,24 @@
     const stoodUp = !(sujudCount > 0 && sujudCount % 2 === 0) || advancedAtCount === sujudCount;
     const sujudArmed = stoodUp && !motionDipped && (now - motionLastHighAt) <= SUJUD_ARM_WINDOW_MS;
     const plateau = sujudArmed ? sujudPlateau(motionHist, now) : null;
+    // Did you sit after the 2nd Sujud? (a real Tashahhud sit is a long, steady big tilt; the stand-up spike is brief)
+    if(sitForCount !== sujudCount){ sitForCount = sujudCount; sitSince = 0; sitSeen = false; }
+    if(smoothedTiltDelta > 55){
+      if(!sitSince) sitSince = now;
+      if(now - sitSince >= 1500) sitSeen = true;
+    } else { sitSince = 0; }
+    // Mistake 1: stood up after only ONE Sujud of a rak'ah
+    if(sujudCount > 0 && sujudCount % 2 === 1 && warnedAtCount !== sujudCount && standingSteady(motionHist, now)){
+      warnedAtCount = sujudCount;
+      motionWarn('2ND SUJUD MISSED');
+    }
     // Standing back up after a rak'ah (2 Sujuds done, prayer not finished) -> show the next rak'ah
     if(advancedAtCount !== sujudCount && sujudCount > 0 && sujudCount % 2 === 0 &&
        sujudCount < sujudMap.length && standingSteady(motionHist, now)){
       advancedAtCount = sujudCount;
       motionDipped = true;
+      // Mistake 2: stood up after rak'ah 2 of a 3/4-rak'ah prayer without sitting for the first Tashahhud
+      if(sujudMap[sujudCount-1] === 2 && totalRakahs > 2 && !sitSeen) motionWarn('NO TASHAHHUD SIT');
       motionLog('STANDING -> next rak\u2019ah');
       renderAll();
     }
