@@ -1401,7 +1401,7 @@
   const PAUSE_SETTLE_MS = 3000; // after Resume, ignore movement while you put the phone back in your pocket
   function setPaused(on){
     motionPaused = on;
-    motionHist.length = 0; motionState = 'up';
+    motionHist.length = 0; motionState = 'up'; motionDipped = true; motionLastHighAt = 0;
     smoothedTiltDelta = null; smoothedGravityVec = null;
     motionStatus.classList.remove('dark');
     if(on){
@@ -1441,6 +1441,12 @@
   const SUJUD_FLAT_DEG = 10;                        // ...within this much wobble
   const SUJUD_RELEASE_HI = 56, SUJUD_RELEASE_LO = 14; // leaving the range re-arms detection
   let motionHist = [];
+  // A real Sujud is always entered from a big tilt (kneeling down, or coming from sitting) without
+  // passing through "standing" first. Standing up and settling at a moderate tilt afterwards must
+  // never count as a Sujud, so a Sujud only counts shortly after such a big tilt, and not once the
+  // phone has gone back to its standing position.
+  const SUJUD_ARM_DEG = 45, SUJUD_ARM_WINDOW_MS = 2500;
+  let motionLastHighAt = 0, motionDipped = true;
   const STAND_MAX_DEG = 18, STAND_HOLD_MS = 500, STAND_FLAT_DEG = 10;
   function standingSteady(hist, now){
     if(!hist.length || now - hist[0].t < STAND_HOLD_MS) return false;
@@ -1536,6 +1542,7 @@
     smoothedTiltDelta = null;
     smoothedGravityVec = null;
     motionDownConfirmedAt = null;
+    motionDipped = true; motionLastHighAt = 0;
     runCalibrationCountdown();
     motionLoopId = setInterval(motionTick, 120);
     if(motionWatchdogId) clearTimeout(motionWatchdogId);
@@ -1687,11 +1694,17 @@
     // Sitting is above the range and spikes never stay flat, so neither counts.
     motionHist.push({t:now, v:smoothedTiltDelta});
     while(motionHist.length && now - motionHist[0].t > 2000) motionHist.shift();
-    const plateau = sujudPlateau(motionHist, now);
+    if(smoothedTiltDelta > SUJUD_ARM_DEG){ motionLastHighAt = now; motionDipped = false; }
+    else if(smoothedTiltDelta < SUJUD_RELEASE_LO){ motionDipped = true; }
+    // after a finished rak'ah (even count) the next Sujud only counts once you have really stood up
+    const stoodUp = !(sujudCount > 0 && sujudCount % 2 === 0) || advancedAtCount === sujudCount;
+    const sujudArmed = stoodUp && !motionDipped && (now - motionLastHighAt) <= SUJUD_ARM_WINDOW_MS;
+    const plateau = sujudArmed ? sujudPlateau(motionHist, now) : null;
     // Standing back up after a rak'ah (2 Sujuds done, prayer not finished) -> show the next rak'ah
     if(advancedAtCount !== sujudCount && sujudCount > 0 && sujudCount % 2 === 0 &&
        sujudCount < sujudMap.length && standingSteady(motionHist, now)){
       advancedAtCount = sujudCount;
+      motionDipped = true;
       motionLog('STANDING -> next rak\u2019ah');
       renderAll();
     }
