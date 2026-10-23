@@ -593,6 +593,7 @@
       </div>
     </div>
     <div class="cam-status" id="qiblaStatus">Qibla off · tap Enable Qibla, then hold your phone flat and rotate until the Kaaba icon points to the top</div>
+    <div class="cam-status" id="qiblaSrc" style="font-size:12px; margin-top:8px; display:none;"></div>
     <div class="cam-status" style="font-size:11px; opacity:.85; margin-top:8px;">Phone compasses can be wrong near metal, magnets or electronics. Always double-check the direction with a trusted source (a mosque's Qibla wall, or an official Qibla finder).</div>
   </div>
 
@@ -1866,6 +1867,23 @@
   let qiblaAbsoluteHandler = null;
   let qiblaRelativeHandler = null;
   let receivedAbsoluteHeading = false; // once true, ignore the non-absolute event stream
+  const qiblaSrc = document.getElementById('qiblaSrc');
+  let qiblaAttachedAt = 0, qiblaSrcAt = 0;
+  // Tells you whether the phone is giving a real north reference. A relative-only
+  // stream has no idea where north is, so any needle direction from it is meaningless.
+  function showQiblaSource(kind){
+    const now = Date.now();
+    if(now - qiblaSrcAt < 600) return;
+    qiblaSrcAt = now;
+    qiblaSrc.style.display = 'block';
+    if(kind === 'good'){
+      qiblaSrc.textContent = '\u2714 Compass: the phone is giving a real north reference';
+      qiblaSrc.style.color = '#8fe0a6';
+    } else if(now - qiblaAttachedAt > 1500){
+      qiblaSrc.textContent = '\u26a0 Compass: the phone is NOT giving a north reference, so the direction is unreliable. Wave the phone in a figure-8, keep it away from metal, magnets and magnetic cases, then tap Disable and Enable Qibla again.';
+      qiblaSrc.style.color = '#ffb36b';
+    }
+  }
   let qiblaNeedleRotation = 0;  // continuous (unwrapped) degrees, so the CSS
                                  // transition always takes the short way round
 
@@ -1935,6 +1953,7 @@
     let heading;
     if(typeof event.webkitCompassHeading === 'number'){
       heading = event.webkitCompassHeading; // iOS Safari: already clockwise from true north, always trustworthy
+      showQiblaSource('good');
     } else {
       // Android can fire both 'deviceorientation' (often relative/uncalibrated)
       // and 'deviceorientationabsolute' (true-north) for the same rotation.
@@ -1945,6 +1964,7 @@
       if(!eventIsAbsolute && receivedAbsoluteHeading) return;
       if(eventIsAbsolute) receivedAbsoluteHeading = true;
       if(event.alpha === null || event.alpha === undefined) return;
+      showQiblaSource(eventIsAbsolute ? 'good' : 'bad');
       heading = (360 - event.alpha) % 360; // Android: alpha is counter-clockwise from device's start orientation
     }
     clearTimeout(qiblaWatchdogId);
@@ -1966,6 +1986,7 @@
 
   function attachQiblaListener(){
     receivedAbsoluteHeading = false;
+    qiblaAttachedAt = Date.now(); qiblaSrcAt = 0; qiblaSrc.style.display = 'none';
     qiblaNeedleRotation = 0;
     qS = null; qLast = null;
     qiblaAbsoluteHandler = (e)=>handleQiblaOrientation(e, true);
@@ -1988,6 +2009,7 @@
       qiblaRelativeHandler = null;
     }
     clearTimeout(qiblaWatchdogId);
+    qiblaSrc.style.display = 'none';
     qiblaActive = false;
     qiblaBearing = null;
     qiblaEnableBtn.textContent = 'Enable Qibla';
