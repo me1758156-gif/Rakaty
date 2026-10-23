@@ -421,6 +421,19 @@
     line-height:1;
     color:var(--gold-bright);
   }
+  .sujud-mini{
+    margin-top:10px;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    color:#8fc4ff;
+  }
+  .sujud-mini span{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700; font-size:30px; line-height:1;
+  }
+  .sujud-mini small{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:.2em; opacity:.7;
+  }
   .rakah-arabic{
     font-family:'Amiri', serif;
     font-size:19px;
@@ -697,6 +710,7 @@
       <div class="center-plate" id="centerPlate">
         <div class="rakah-label">Rakah</div>
         <div class="rakah-number" id="rakahNum">—</div>
+        <div class="sujud-mini" id="sujudMini" style="display:none;"><span id="sujudMiniNum">0</span><small>SUJUD</small></div>
         <div class="rakah-arabic" id="rakahArabic">استعد</div>
         <div class="rakah-of" id="rakahOf">Select a prayer</div>
         <div class="phase-label" id="phaseLabel"></div>
@@ -759,6 +773,8 @@
   const rakahOf = document.getElementById('rakahOf');
   const phaseLabel = document.getElementById('phaseLabel');
   const phaseLabelAr = document.getElementById('phaseLabelAr');
+  const sujudMini = document.getElementById('sujudMini');
+  const sujudMiniNum = document.getElementById('sujudMiniNum');
   const statusLine = document.getElementById('statusLine');
   const statusText = document.getElementById('statusText');
   const listenBtn = document.getElementById('listenBtn');
@@ -1032,6 +1048,16 @@
         }
         centerPlate.classList.remove('complete');
       }
+    }
+    // Motion mode shows only two numbers: the big rak'ah, and a small Sujud count (0, 1, 2) inside it
+    const simple = (mode==='motion' && totalRakahs && count < map.length);
+    [rakahArabic, rakahOf, phaseLabel, phaseLabelAr].forEach(el=>{ el.style.display = simple ? 'none' : ''; });
+    sujudMini.style.display = simple ? 'flex' : 'none';
+    if(simple){
+      const adv = (advancedAtCount===count && count>0 && count%2===0);
+      rakahNum.textContent = count===0 ? 1 : (adv ? map[count] : getRakah(count));
+      rakahNum.classList.remove('complete-check');
+      sujudMiniNum.textContent = adv ? 0 : (count===0 ? 0 : ((count-1)%2)+1);
     }
     logCount.textContent = count + ' heard';
     if(logEntries.length===0){
