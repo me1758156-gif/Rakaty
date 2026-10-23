@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakah-tracker-v38';
+const CACHE_NAME = 'rakah-tracker-v39';
 const ASSETS = [
   './index.html',
   './manifest.json',

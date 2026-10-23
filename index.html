@@ -902,6 +902,7 @@
   function setActiveCount(v){ if(mode==='sujud'||mode==='motion'){ sujudCount=v; } else { takbirCount=v; } }
   function unitLabel(){ return (mode==='sujud'||mode==='motion') ? 'Sujud' : 'Takbir'; }
 
+  let advancedAtCount = -1; // the Sujud count at which you stood up for the next rak'ah (Motion mode)
   function getRakah(count){
     const map = activeMap();
     if(count<=0) return 0;
@@ -1013,13 +1014,21 @@
         phaseLabelAr.textContent = 'ثم التسليم';
         centerPlate.classList.add('complete');
       } else {
-        rakahNum.textContent = r;
+        // Motion mode: once you stand up after the 2nd Sujud, move on to the next rak'ah straight away
+        const advanced = (mode==='motion' && advancedAtCount===count && count>0 && count%2===0);
+        const shown = advanced ? map[count] : r;
+        rakahNum.textContent = shown;
         rakahNum.classList.remove('complete-check');
-        rakahArabic.textContent = rakahWordAr[r] || ('الركعة ' + arabicIndic[r]);
-        rakahOf.textContent = 'Rakah ' + r + ' of ' + totalRakahs;
-        const phase = getPhase(count);
-        phaseLabel.textContent = phase.en;
-        phaseLabelAr.textContent = phase.ar;
+        rakahArabic.textContent = rakahWordAr[shown] || ('الركعة ' + arabicIndic[shown]);
+        rakahOf.textContent = 'Rakah ' + shown + ' of ' + totalRakahs;
+        if(advanced){
+          phaseLabel.textContent = 'Standing \u00b7 waiting for 1st Sujud';
+          phaseLabelAr.textContent = 'في انتظار السجدة الأولى';
+        } else {
+          const phase = getPhase(count);
+          phaseLabel.textContent = phase.en;
+          phaseLabelAr.textContent = phase.ar;
+        }
         centerPlate.classList.remove('complete');
       }
     }
@@ -1039,6 +1048,7 @@
     if(!totalRakahs){ flashStatus('Pick a prayer first'); return; }
     if(count >= map.length){ flashStatus('Prayer already complete — tap Reset to start again'); return; }
     count++;
+    advancedAtCount = -1;
     setActiveCount(count);
     const r = getRakah(count);
     const time = new Date().toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true});
@@ -1055,6 +1065,7 @@
     let count = activeCount();
     if(count===0) return;
     count--;
+    advancedAtCount = -1;
     setActiveCount(count);
     logEntries.pop();
     renderAll();
@@ -1429,6 +1440,17 @@
   const SUJUD_FLAT_DEG = 10;                        // ...within this much wobble
   const SUJUD_RELEASE_HI = 56, SUJUD_RELEASE_LO = 14; // leaving the range re-arms detection
   let motionHist = [];
+  const STAND_MAX_DEG = 18, STAND_HOLD_MS = 500, STAND_FLAT_DEG = 10;
+  function standingSteady(hist, now){
+    if(!hist.length || now - hist[0].t < STAND_HOLD_MS) return false;
+    let lo = Infinity, hi = -Infinity;
+    for(const h of hist){
+      if(h.t < now - STAND_HOLD_MS) continue;
+      if(h.v < lo) lo = h.v;
+      if(h.v > hi) hi = h.v;
+    }
+    return hi <= STAND_MAX_DEG && (hi - lo) <= STAND_FLAT_DEG;
+  }
   function sujudPlateau(hist, now){
     if(!hist.length || now - hist[0].t < SUJUD_HOLD_MS) return null;
     let lo = Infinity, hi = -Infinity;
@@ -1665,6 +1687,13 @@
     motionHist.push({t:now, v:smoothedTiltDelta});
     while(motionHist.length && now - motionHist[0].t > 2000) motionHist.shift();
     const plateau = sujudPlateau(motionHist, now);
+    // Standing back up after a rak'ah (2 Sujuds done, prayer not finished) -> show the next rak'ah
+    if(advancedAtCount !== sujudCount && sujudCount > 0 && sujudCount % 2 === 0 &&
+       sujudCount < sujudMap.length && standingSteady(motionHist, now)){
+      advancedAtCount = sujudCount;
+      motionLog('STANDING -> next rak\u2019ah');
+      renderAll();
+    }
 
     if(motionState==='up'){
       if(plateau){
