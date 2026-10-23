@@ -708,6 +708,7 @@
     <div class="controls">
       <button class="btn-main" id="listenBtn">Start Listening</button>
       <button class="btn-secondary" id="tapBtn">+1 Takbir</button>
+      <button class="btn-secondary" id="pauseBtn" style="display:none; flex:1;">Pause</button>
     </div>
     <div class="row2">
       <button class="btn-secondary" id="undoBtn">Undo last</button>
@@ -1383,6 +1384,28 @@
   let motionCalibratedVec = null; // snapshot of the original calibration — drift correction is capped relative to this, never to itself
   let motionTiltSince = null;
   let motionState = 'up'; // 'up' | 'down'
+  let motionPaused = false, motionResumeAt = 0;
+  const pauseBtn = document.getElementById('pauseBtn');
+  const PAUSE_SETTLE_MS = 3000; // after Resume, ignore movement while you put the phone back in your pocket
+  function setPaused(on){
+    motionPaused = on;
+    motionHist.length = 0; motionState = 'up';
+    smoothedTiltDelta = null; smoothedGravityVec = null;
+    motionStatus.classList.remove('dark');
+    if(on){
+      pauseBtn.textContent = 'Resume';
+      pauseBtn.style.borderColor = '#e6b84a'; pauseBtn.style.color = '#ffd980';
+      motionStatus.textContent = 'Paused \u00b7 nothing is counted. Tap Resume when the phone is back in your pocket';
+      tiltFill.style.width = '0%';
+    } else {
+      motionResumeAt = Date.now() + PAUSE_SETTLE_MS;
+      pauseBtn.textContent = 'Pause';
+      pauseBtn.style.borderColor = ''; pauseBtn.style.color = '';
+      motionLastEventTime = Date.now();
+    }
+    if(navigator.vibrate) navigator.vibrate(on ? 40 : [40,40,40]);
+  }
+  pauseBtn.onclick = ()=>{ if(motionActive) setPaused(!motionPaused); };
   let motionLastEventTime = 0;
   let motionLoopId = null;
   let motionWatchdogId = null;
@@ -1483,6 +1506,7 @@
     window.addEventListener('devicemotion', onDeviceMotion);
     motionActive = true;
     motionEnableBtn.textContent = 'Disable Motion';
+    pauseBtn.style.display = '';
     motionBaselineVec = null;
     motionCalibratedVec = null;
     lastGravity = null;
@@ -1512,6 +1536,8 @@
     motionDownConfirmedAt = null;
     motionState = 'up';
     motionEnableBtn.textContent = 'Enable Motion';
+    motionPaused = false; motionResumeAt = 0;
+    pauseBtn.style.display = 'none'; pauseBtn.textContent = 'Pause'; pauseBtn.style.borderColor = ''; pauseBtn.style.color = '';
     motionStatus.textContent = 'Motion off · pocket the phone upright, stand still, then tap Enable Motion';
     tiltFill.style.width = '0%';
   }
@@ -1570,6 +1596,12 @@
   function motionTick(){
     if(!motionActive || lastGravity===null) return;
     if(motionBaselineVec===null) return; // still counting down to calibration — don't detect yet
+    if(motionPaused) return;
+    if(Date.now() < motionResumeAt){
+      motionHist.length = 0; motionState = 'up';
+      motionStatus.textContent = 'Resuming in ' + Math.ceil((motionResumeAt - Date.now())/1000) + '\u2026 put the phone back';
+      return;
+    }
 
     // Smooth the raw vector itself (not just an angle) so classification
     // against calibrated postures isn't thrown off by single jittery
