@@ -1401,6 +1401,22 @@
   let motionDownConfirmedAt = null;
   const MOTION_MIN_UP_MS = 250; // after coming up, stay up this long before a new Sujud can begin (stops posture flicker while moving between Sujud and sitting)
   let motionUpSince = 0;
+  const SUJUD_MIN_DEG = 18, SUJUD_MAX_DEG = 52;      // tilt range of a real Sujud in the pocket
+  const SUJUD_HOLD_MS = 900;                        // must stay steady this long
+  const SUJUD_FLAT_DEG = 10;                        // ...within this much wobble
+  const SUJUD_RELEASE_HI = 56, SUJUD_RELEASE_LO = 14; // leaving the range re-arms detection
+  let motionHist = [];
+  function sujudPlateau(hist, now){
+    if(!hist.length || now - hist[0].t < SUJUD_HOLD_MS) return null;
+    let lo = Infinity, hi = -Infinity;
+    for(const h of hist){
+      if(h.t < now - SUJUD_HOLD_MS) continue;
+      if(h.v < lo) lo = h.v;
+      if(h.v > hi) hi = h.v;
+    }
+    if(lo < SUJUD_MIN_DEG || hi > SUJUD_MAX_DEG || (hi - lo) > SUJUD_FLAT_DEG) return null;
+    return {lo, hi};
+  }
   let motionDownCounted = false;
   let motionPeakTilt = 0;
   // Live readout so over/under-counting can be tuned from real numbers
@@ -1608,64 +1624,53 @@
     const isSujudNow = useDirection ? (nearest === 'sujud') : (smoothedTiltDelta > enterThreshold);
     const isUpNow = useDirection ? (nearest !== 'sujud') : (smoothedTiltDelta < exitThreshold);
 
+    // How Sujud looks in the pocket (from your real traces): standing is ~0-12 deg,
+    // Sujud is a steady plateau at a moderate tilt (~25-35 deg), sitting
+    // (between Sujud / Tashahhud) is a steady plateau at a much bigger tilt
+    // (~70 deg), and getting down / standing up are quick spikes. So a Sujud
+    // is counted when the tilt stays flat inside the Sujud range for a moment.
+    // Sitting is above the range and spikes never stay flat, so neither counts.
+    motionHist.push({t:now, v:smoothedTiltDelta});
+    while(motionHist.length && now - motionHist[0].t > 2000) motionHist.shift();
+    const plateau = sujudPlateau(motionHist, now);
+
     if(motionState==='up'){
-      if(isSujudNow && (now - motionUpSince) >= MOTION_MIN_UP_MS){
-        if(motionTiltSince===null) motionTiltSince = now;
-        if(now - motionTiltSince >= MIN_TILT_MS){
-          motionState = 'down';
-          motionDownConfirmedAt = now;
-          motionDownCounted = false;
-          motionPeakTilt = smoothedTiltDelta;
-          motionLog('DOWN (tilt ' + smoothedTiltDelta.toFixed(0) + ')');
-          motionStatus.textContent = 'Deep bow detected — in Sujud…';
-          motionStatus.classList.add('dark');
+      if(plateau){
+        motionState = 'down';
+        motionDownConfirmedAt = now;
+        motionDownCounted = true;
+        motionPeakTilt = smoothedTiltDelta;
+        motionStatus.classList.add('dark');
+        if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
+          motionLastEventTime = now;
+          motionLog('SUJUD steady at ' + plateau.lo.toFixed(0) + '-' + plateau.hi.toFixed(0) + ' -> COUNTED');
+          motionStatus.textContent = 'Sujud counted \u00b7 watching\u2026';
+          addCount();
+        } else {
+          motionLog('steady but too soon after last count, not counted');
         }
       } else {
-        motionTiltSince = null;
         // Slowly track baseline drift (phone settling further into the
-        // pocket over a long session) while standing still. Frozen during
-        // an actual Sujud below, so a bow never pulls the baseline toward
-        // itself. Capped against the original calibration so repeated
-        // small nudges across many rak'ahs can never quietly raise the
-        // angle needed to trigger a later Sujud.
+        // pocket) while standing still; capped against the original
+        // calibration so it can never quietly shift by more than a few degrees.
         if(smoothedTiltDelta < enterThreshold*0.15){
           const candidate = {
             x: motionBaselineVec.x*0.998 + lastGravity.x*0.002,
             y: motionBaselineVec.y*0.998 + lastGravity.y*0.002,
             z: motionBaselineVec.z*0.998 + lastGravity.z*0.002
           };
-          // Only accept the drift if it doesn't pull the baseline more
-          // than a couple of degrees from where it was first calibrated.
           if(motionCalibratedVec===null || vecAngleDeg(candidate, motionCalibratedVec) < 5){
             motionBaselineVec = candidate;
           }
         }
-        motionStatus.textContent = 'Watching for Sujud…';
+        motionStatus.textContent = 'Watching for Sujud\u2026';
       }
-    } else { // motionState === 'down'
-      // Count the Sujud as soon as it has been held long enough, instead of
-      // waiting for you to come back up. That way a Sujud that flows straight
-      // into sitting (the last Sujud before Tashahhud) is still counted, and
-      // sitting for a long Tashahhud can never count again: one posture
-      // span = one count, until the phone really returns to the "up" range.
-      const heldMs = motionDownConfirmedAt!==null ? (now - motionDownConfirmedAt) : 0;
+    } else { // 'down' = this Sujud already counted; wait until the phone really leaves the Sujud range
       motionPeakTilt = Math.max(motionPeakTilt, smoothedTiltDelta);
-      if(!motionDownCounted && heldMs >= MIN_DOWN_HOLD_MS){
-        motionDownCounted = true;
-        if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
-          motionLastEventTime = now;
-          motionLog('COUNTED after ' + heldMs + 'ms held, tilt ' + smoothedTiltDelta.toFixed(0));
-          motionStatus.textContent = 'Sujud counted \u00b7 watching\u2026';
-          addCount();
-        } else {
-          motionLog('held ' + heldMs + 'ms but too soon after last count, not counted');
-        }
-      }
-      if(isUpNow){
+      if(smoothedTiltDelta > SUJUD_RELEASE_HI || smoothedTiltDelta < SUJUD_RELEASE_LO){
         motionState = 'up'; motionUpSince = now;
         motionStatus.classList.remove('dark');
-        motionLog('UP after ' + heldMs + 'ms, peak ' + motionPeakTilt.toFixed(0) + ', tilt ' + smoothedTiltDelta.toFixed(0) + (motionDownCounted ? '' : ' too brief, not counted'));
-        if(!motionDownCounted) motionStatus.textContent = 'Watching for Sujud\u2026';
+        motionLog('LEFT Sujud (tilt ' + smoothedTiltDelta.toFixed(0) + ')');
       }
     }
   }
