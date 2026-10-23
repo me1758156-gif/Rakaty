@@ -1131,6 +1131,12 @@
         statusLine.style.display = (mode==='takbir') ? '' : 'none';
         tapBtn.textContent = (mode==='takbir') ? '+1 Takbir' : '+1 Sujud';
         logHeadLabel.textContent = (mode==='takbir') ? 'Takbir Log' : 'Sujud Log';
+        // Camera / Motion modes are automatic: no manual +1 Sujud, no Undo, no Sujud log
+        const manual = (mode==='takbir');
+        tapBtn.style.display = manual ? '' : 'none';
+        undoBtn.style.display = manual ? '' : 'none';
+        document.querySelector('.log-panel').style.display = manual ? '' : 'none';
+        document.querySelector('.controls').style.display = (mode==='sujud') ? 'none' : '';
         buildRing();
         renderAll();
       }
