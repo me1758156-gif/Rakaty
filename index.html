@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Rakah">
+<script>try{var __t=localStorage.getItem("rakah-theme");if(__t)document.documentElement.setAttribute("data-theme",__t);}catch(e){}</script>
 <link rel="stylesheet" href="./fonts/fonts.css">
 <style>
   :root{
@@ -588,9 +589,22 @@
     <div class="eyebrow">Salah Companion</div>
     <h1>Rakah Tracker<span class="ar">متتبع الركعات</span></h1>
     <div class="toprow">
+      <button class="btn-secondary small" id="themeBtn" type="button">🎨 Theme</button>
       <button class="btn-secondary small" id="qiblaToggleBtn" type="button">🧭 Qibla</button>
     </div>
   </header>
+
+  <div class="theme-panel" id="themePanel" style="display:none;">
+    <div class="theme-title">Choose a colour</div>
+    <div class="theme-row">
+      <button class="theme-swatch" data-theme="blue" type="button"><i style="background:linear-gradient(135deg,#4DA3FF,#2465E0)"></i>Blue</button>
+      <button class="theme-swatch" data-theme="black" type="button"><i style="background:linear-gradient(135deg,#3a3a40,#000)"></i>Black</button>
+      <button class="theme-swatch" data-theme="pink" type="button"><i style="background:linear-gradient(135deg,#FF8CC8,#D63384)"></i>Pink</button>
+      <button class="theme-swatch" data-theme="green" type="button"><i style="background:linear-gradient(135deg,#4ADE80,#15803D)"></i>Green</button>
+      <button class="theme-swatch" data-theme="red" type="button"><i style="background:linear-gradient(135deg,#FF6B6B,#B91C1C)"></i>Red</button>
+      <button class="theme-swatch" data-theme="purple" type="button"><i style="background:linear-gradient(135deg,#B48CFF,#5B21B6)"></i>Purple</button>
+    </div>
+  </div>
 
   <div class="qibla-panel" id="qiblaPanel" style="display:none;">
     <div class="camera-row">
@@ -946,11 +960,11 @@
   function buildRing(){
     ring.innerHTML =
       '<defs>' +
-      '<radialGradient id="gBeadEmpty" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#fff" stop-opacity=".6"/><stop offset=".5" stop-color="#9CC4FF" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".05"/></radialGradient>' +
-      '<radialGradient id="gBeadBlue" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#EAF6FF"/><stop offset=".4" stop-color="#5CB8FF"/><stop offset="1" stop-color="#1F5FD6"/></radialGradient>' +
+      '<radialGradient id="gBeadEmpty" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#fff" stop-opacity=".6"/><stop offset=".5" style="stop-color:var(--tint-hex)" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".05"/></radialGradient>' +
+      '<radialGradient id="gBeadBlue" cx=".35" cy=".3" r=".85"><stop offset="0" style="stop-color:var(--bead-hi)"/><stop offset=".4" style="stop-color:var(--acc)"/><stop offset="1" style="stop-color:var(--bead-lo)"/></radialGradient>' +
       '<radialGradient id="gBeadGoldEmpty" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#FFF3D2" stop-opacity=".7"/><stop offset="1" stop-color="#E3B866" stop-opacity=".14"/></radialGradient>' +
       '<radialGradient id="gBeadGold" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#FFF6DA"/><stop offset=".4" stop-color="#E9BE6A"/><stop offset="1" stop-color="#A9742A"/></radialGradient>' +
-      '<linearGradient id="gProg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ADAFF"/><stop offset="1" stop-color="#3B7DFF"/></linearGradient>' +
+      '<linearGradient id="gProg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--prog-a)"/><stop offset="1" style="stop-color:var(--prog-b)"/></linearGradient>' +
       '</defs>' +
       '<circle class="ring-track" cx="170" cy="170" r="150"/>' +
       '<circle class="ring-track-edge" cx="170" cy="170" r="161"/>' +
@@ -1920,6 +1934,32 @@
   calSujudBtn.onclick = ()=> runPositionCapture('Sujud', 'sujud', motionCalStatus);
   calJalsaBtn.onclick = ()=> runPositionCapture('the brief sit between the two Sujud', 'jalsa', motionCalStatus);
   calSitBtn.onclick = ()=> runPositionCapture('sitting (Tashahhud)', 'sitting', motionCalStatus);
+
+  // ---- Colour themes (remembered on this phone) ----
+  (function(){
+    const THEME_BG = {blue:'#071226', black:'#000000', pink:'#1a0613', green:'#04140d', red:'#1a0608', purple:'#0f0a22'};
+    const themeBtn = document.getElementById('themeBtn');
+    const themePanel = document.getElementById('themePanel');
+    const swatches = Array.from(document.querySelectorAll('.theme-swatch'));
+    function applyTheme(name, save){
+      if(!THEME_BG[name]) name = 'blue';
+      document.documentElement.setAttribute('data-theme', name);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if(meta) meta.setAttribute('content', THEME_BG[name]);
+      swatches.forEach(b=> b.classList.toggle('active', b.dataset.theme === name));
+      if(save){ try{ localStorage.setItem('rakah-theme', name); }catch(e){} }
+    }
+    let saved = 'blue';
+    try{ saved = localStorage.getItem('rakah-theme') || 'blue'; }catch(e){}
+    applyTheme(saved, false);
+    themeBtn.addEventListener('click', ()=>{
+      themePanel.style.display = (themePanel.style.display === 'none') ? 'block' : 'none';
+    });
+    swatches.forEach(b=> b.addEventListener('click', ()=> applyTheme(b.dataset.theme, true)));
+    document.addEventListener('click', (e)=>{
+      if(themePanel.style.display !== 'none' && !themePanel.contains(e.target) && e.target !== themeBtn) themePanel.style.display = 'none';
+    });
+  })();
 
   // ---- Qibla compass ----
   // Bearing to the Kaaba via great-circle initial bearing formula, then
