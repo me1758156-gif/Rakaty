@@ -355,3 +355,6 @@ html[lang="ar"] .eyebrow, html[lang="ar"] .step-label, html[lang="ar"] .set-labe
 .switch-row input:checked + .switch::after{ transform:translateX(20px); }
 html[dir="rtl"] .switch::after{ left:auto; right:2px; }
 html[dir="rtl"] .switch-row input:checked + .switch::after{ transform:translateX(-20px); }
+
+.offline-note{ margin-top:12px; font-size:12px; line-height:1.4; color:var(--text-faint); text-align:center; }
+.offline-note.ok{ color:#8fe0a6; }

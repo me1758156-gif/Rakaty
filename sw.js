@@ -1,10 +1,11 @@
-const CACHE_NAME = 'rakah-tracker-v50';
+const CACHE_NAME = 'rakah-tracker-v51';
 const ASSETS = [
   './index.html',
   './manifest.json',
   './glass.css',
   './i18n.js',
   './prayer.html',
+  './compass-test.html',
   './manifest-prayer.json',
   './prayer-icon-180.png',
   './prayer-icon-192.png',
@@ -28,6 +29,11 @@ const ASSETS = [
   './fonts/manrope-latin-800-normal.woff2'
 ];
 
+// How long to wait for the network before using the saved copy. On weak reception
+// (mosque basements) a request can hang for a very long time instead of failing, so the
+// app must not wait for it: after this many ms the saved copy is used straight away.
+const NETWORK_WAIT_MS = 2500;
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
@@ -44,46 +50,66 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Network-first for navigations/HTML so app-code updates land automatically
-// the next time you're online, instead of getting stuck on a stale cached
-// version. Falls back to the cached copy only when offline. Static assets
-// (icons, manifest) stay cache-first since they rarely change and this
-// keeps the app instant-loading and offline-capable.
+// Pages that are not stored under their exact URL (the bare folder address, links with
+// ?query parts, a first open straight after installing) still get the right saved page.
+async function savedPage(request) {
+  const exact = await caches.match(request, { ignoreSearch: true });
+  if (exact) return exact;
+  const path = new URL(request.url).pathname;
+  if (path.endsWith('/prayer.html')) return caches.match('./prayer.html');
+  if (path.endsWith('/compass-test.html')) return caches.match('./compass-test.html');
+  return caches.match('./index.html');
+}
+
+// Pages: online -> newest version (and refresh the saved copy). Offline, or network
+// slower than NETWORK_WAIT_MS -> the saved copy, instantly.
+function pageResponse(request) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (r) => { if (!settled && r) { settled = true; resolve(r); } };
+    const timer = setTimeout(() => { savedPage(request).then(finish); }, NETWORK_WAIT_MS);
+    fetch(request)
+      .then((response) => {
+        clearTimeout(timer);
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          finish(response);
+        } else {
+          savedPage(request).then((saved) => finish(saved || response));
+        }
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        savedPage(request).then((saved) => finish(saved || Response.error()));
+      });
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
-  const isHTML = event.request.mode === 'navigate' ||
-    event.request.destination === 'document' ||
-    event.request.url.endsWith('.html') ||
-    event.request.url.endsWith('/');
+  const isPage = event.request.mode === 'navigate' || event.request.destination === 'document' ||
+    url.pathname.endsWith('.html') || url.pathname.endsWith('/');
 
-  if (isHTML) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
+  if (isPage) {
+    event.respondWith(pageResponse(event.request));
     return;
   }
 
+  // Everything else (styles, scripts, fonts, icons): saved copy first, so it is instant and works offline.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cached) => {
       if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
+      return fetch(event.request).then((response) => {
+        if (response && response.ok) {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            if (event.request.url.startsWith(self.location.origin)) {
-              cache.put(event.request, copy);
-            }
-          });
-          return response;
-        })
-        .catch(() => cached);
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      });
     })
   );
 });

@@ -22,6 +22,8 @@
     'Settings':'الإعدادات',
     'Colour':'اللون',
     'Language':'اللغة',
+    '✔ Works offline — everything is saved on this phone':'✔ يعمل بدون إنترنت — كل شيء محفوظ على هذا الهاتف',
+    'Offline mode is not ready yet — open the app once with internet':'وضع عدم الاتصال غير جاهز بعد — افتح التطبيق مرة واحدة مع الإنترنت',
     'Quick start':'بداية سريعة',
     'Opens on the prayer whose time it is now, ready to track':'يفتح على الصلاة الحالية جاهزاً للتتبّع',
     'How to use':'طريقة الاستخدام',

@@ -613,6 +613,7 @@
       <button class="lang-pill" data-lang="ar" type="button" data-notr>العربية</button>
     </div>
     <button class="btn-secondary guide-open" id="guideBtn" type="button">How to use</button>
+    <div class="offline-note" id="offlineNote"></div>
   </div>
 
   <div class="qibla-panel" id="qiblaPanel" style="display:none;">
@@ -1897,6 +1898,21 @@
     });
   })();
 
+  // ---- "Works offline" status in Settings ----
+  (function(){
+    const note = document.getElementById('offlineNote');
+    function show(ok){
+      note.textContent = ok ? '✔ Works offline — everything is saved on this phone'
+                            : 'Offline mode is not ready yet — open the app once with internet';
+      note.classList.toggle('ok', ok);
+    }
+    show(false);
+    if(!('serviceWorker' in navigator) || !window.caches) return;
+    navigator.serviceWorker.ready.then(()=> caches.keys()).then(keys=>{
+      return caches.open(keys.filter(k=>k.indexOf('rakah-tracker')===0).pop()).then(c=> c.match('./index.html'));
+    }).then(r=> show(!!r)).catch(()=> show(false));
+  })();
+
   // ---- Quick start switch (remembered) ----
   (function(){
     const t = document.getElementById('quickToggle');
@@ -2162,6 +2178,7 @@
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
       navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
     });
   }
 })();
