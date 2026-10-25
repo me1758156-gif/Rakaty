@@ -1878,7 +1878,9 @@
 
   // ---- Language (English / العربية) ----
   (function(){
-    const cur = window.RAKAH_LANG || 'en';
+    // read the saved language directly (i18n.js loads after this script, so window.RAKAH_LANG is not set yet)
+    let cur = 'en';
+    try{ cur = localStorage.getItem('rakah-lang') || 'en'; }catch(e){}
     document.querySelectorAll('.lang-pill').forEach(b=>{
       b.classList.toggle('active', b.dataset.lang === cur);
       b.addEventListener('click', ()=>{
