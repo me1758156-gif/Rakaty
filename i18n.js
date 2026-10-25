@@ -22,6 +22,8 @@
     'Settings':'الإعدادات',
     'Colour':'اللون',
     'Language':'اللغة',
+    'Quick start':'بداية سريعة',
+    'Opens on the prayer whose time it is now, ready to track':'يفتح على الصلاة الحالية جاهزاً للتتبّع',
     'How to use':'طريقة الاستخدام',
     '? How to use':'؟ طريقة الاستخدام',
     'Blue':'أزرق','Black':'أسود','Pink':'وردي','Green':'أخضر','Red':'أحمر','Purple':'بنفسجي',

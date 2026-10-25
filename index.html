@@ -605,6 +605,8 @@
       <button class="theme-swatch" data-theme="red" type="button"><i style="background:linear-gradient(135deg,#FF6B6B,#B91C1C)"></i>Red</button>
       <button class="theme-swatch" data-theme="purple" type="button"><i style="background:linear-gradient(135deg,#B48CFF,#5B21B6)"></i>Purple</button>
     </div>
+    <div class="set-label">Quick start</div>
+    <label class="switch-row"><span>Opens on the prayer whose time it is now, ready to track</span><input type="checkbox" id="quickToggle"><i class="switch"></i></label>
     <div class="set-label">Language</div>
     <div class="lang-row">
       <button class="lang-pill" data-lang="en" type="button" data-notr>English</button>
@@ -886,7 +888,8 @@
     chipEl.classList.add('active');
     buildRing();
     renderAll();
-    goToStep('mode');
+    if(typeof quickOn === 'function' && quickOn()) goTrackWithSavedMode();
+    else goToStep('mode');
   }
 
   // ---- structure: every rak'ah has 5 takbirs on its own (Ihram/qiyam or
@@ -1146,10 +1149,28 @@
         buildRing();
         renderAll();
       }
+      try{ localStorage.setItem('rakah-mode', mode); }catch(e){}
       updateTrackSummary();
       goToStep('track');
     };
   });
+
+  // ---- Quick start (optional, in Settings): open on the current prayer, go straight to tracking ----
+  function quickOn(){ try{ return localStorage.getItem('rakah-quick') === '1'; }catch(e){ return false; } }
+  function goTrackWithSavedMode(){
+    let saved = 'motion';
+    try{ saved = localStorage.getItem('rakah-mode') || 'motion'; }catch(e){}
+    const chips = Array.from(modeChips);
+    const chip = chips.find(c=> c.dataset.mode === saved) || chips.find(c=> c.dataset.mode === 'motion');
+    chip.onclick();
+  }
+  window.rakahQuick = function(){
+    if(!quickOn() || !window.rakahCurrentPrayer) return;
+    const idx = prayers.findIndex(p=> p.id === window.rakahCurrentPrayer());
+    if(idx < 0) return;
+    const p = prayers[idx];
+    selectPrayer(p.rakahs, selector.children[idx], p.label);
+  };
 
   // ---- camera-based Sujud detection ----
   // Watches the phone's camera for a sustained drop in brightness (the
@@ -1876,6 +1897,13 @@
     });
   })();
 
+  // ---- Quick start switch (remembered) ----
+  (function(){
+    const t = document.getElementById('quickToggle');
+    try{ t.checked = localStorage.getItem('rakah-quick') === '1'; }catch(e){}
+    t.addEventListener('change', ()=>{ try{ localStorage.setItem('rakah-quick', t.checked ? '1' : '0'); }catch(e){} });
+  })();
+
   // ---- Language (English / العربية) ----
   (function(){
     // read the saved language directly (i18n.js loads after this script, so window.RAKAH_LANG is not set yet)
@@ -2205,6 +2233,17 @@
       return seq;
     }
     var seq=buildSeq(), seqDay=new Date().getDate();
+    // Which of the 5 prayers is it time for right now? (used by Quick start)
+    // Before Fajr it is still last night's Isha; between sunrise and Dhuhr there is no prayer, so we offer the coming Dhuhr.
+    window.rakahCurrentPrayer=function(){
+      var n=new Date(), t=daySet(0);
+      if(n<t.fajr) return 'isha';
+      if(n<t.sunrise) return 'fajr';
+      if(n<t.asr) return 'dhuhr';
+      if(n<t.maghrib) return 'asr';
+      if(n<t.isha) return 'maghrib';
+      return 'isha';
+    };
     function nameOf(k){ for(var i=0;i<NAMES.length;i++) if(NAMES[i][0]===k) return NAMES[i]; }
 
     function renderRows(){
@@ -2252,6 +2291,7 @@
     renderRows(); tick(); setInterval(tick,1000);
   })();
 </script>
+<script>if(window.rakahQuick) window.rakahQuick();</script>
 <script src="./i18n.js"></script>
 </body>
 </html>
