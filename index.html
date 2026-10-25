@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Rakah">
-<script>try{var __t=localStorage.getItem("rakah-theme");if(__t)document.documentElement.setAttribute("data-theme",__t);}catch(e){}</script>
+<script>try{var __t=localStorage.getItem("rakah-theme");if(__t)document.documentElement.setAttribute("data-theme",__t);if(localStorage.getItem("rakah-lang")==="ar"){document.documentElement.setAttribute("lang","ar");document.documentElement.setAttribute("dir","rtl");}}catch(e){}</script>
 <link rel="stylesheet" href="./fonts/fonts.css">
 <style>
   :root{
@@ -589,13 +589,14 @@
     <div class="eyebrow">Salah Companion</div>
     <h1>Rakah Tracker<span class="ar">متتبع الركعات</span></h1>
     <div class="toprow">
-      <button class="btn-secondary small" id="themeBtn" type="button">🎨 Theme</button>
+      <button class="btn-secondary small" id="themeBtn" type="button">⚙️ Settings</button>
       <button class="btn-secondary small" id="qiblaToggleBtn" type="button">🧭 Qibla</button>
     </div>
   </header>
 
   <div class="theme-panel" id="themePanel" style="display:none;">
-    <div class="theme-title">Choose a colour</div>
+    <div class="theme-title">Settings</div>
+    <div class="set-label">Colour</div>
     <div class="theme-row">
       <button class="theme-swatch" data-theme="blue" type="button"><i style="background:linear-gradient(135deg,#4DA3FF,#2465E0)"></i>Blue</button>
       <button class="theme-swatch" data-theme="black" type="button"><i style="background:linear-gradient(135deg,#3a3a40,#000)"></i>Black</button>
@@ -604,6 +605,12 @@
       <button class="theme-swatch" data-theme="red" type="button"><i style="background:linear-gradient(135deg,#FF6B6B,#B91C1C)"></i>Red</button>
       <button class="theme-swatch" data-theme="purple" type="button"><i style="background:linear-gradient(135deg,#B48CFF,#5B21B6)"></i>Purple</button>
     </div>
+    <div class="set-label">Language</div>
+    <div class="lang-row">
+      <button class="lang-pill" data-lang="en" type="button" data-notr>English</button>
+      <button class="lang-pill" data-lang="ar" type="button" data-notr>العربية</button>
+    </div>
+    <button class="btn-secondary guide-open" id="guideBtn" type="button">How to use</button>
   </div>
 
   <div class="qibla-panel" id="qiblaPanel" style="display:none;">
@@ -738,6 +745,21 @@
       <button class="btn-secondary" id="resetBtn">Reset</button>
     </div>
 
+  </div>
+</div>
+
+<div class="guide" id="guide" style="display:none;">
+  <div class="guide-card">
+    <div class="guide-slide"><div class="guide-ico">🕌</div><h2>Welcome</h2><p>Rakah Tracker counts your prayer for you, so you never lose track of which rak'ah you are in.</p></div>
+    <div class="guide-slide"><div class="guide-ico">📱</div><h2>Place your phone</h2><p>Motion: keep the phone in your pocket, upright, the same way every time. Camera: lay it screen-up on your mat.</p></div>
+    <div class="guide-slide"><div class="guide-ico">🤲</div><h2>Start praying</h2><p>Pick your prayer, tap Enable Motion, then stand still until the countdown ends. After that, just pray.</p></div>
+    <div class="guide-slide"><div class="guide-ico">📳</div><h2>What the buzzes mean</h2><p>Two short buzzes: a sujud was counted. One long triple buzz: a mistake (missed or extra sujud, missing or false Tashahhud).</p></div>
+    <div class="guide-slide"><div class="guide-ico">⏸️</div><h2>Need to look at the screen?</h2><p>Tap Pause before taking the phone out, and Resume when it is back in your pocket. The big number is your rak'ah; the small one counts the sujuds in it.</p></div>
+    <div class="guide-dots" id="guideDots"></div>
+    <div class="guide-actions">
+      <button class="btn-secondary" id="guideSkip" type="button">Skip</button>
+      <button class="btn-main" id="guideNext" type="button">Next</button>
+    </div>
   </div>
 </div>
 
@@ -1095,7 +1117,9 @@
   }
 
   resetBtn.onclick = ()=>{
-    setActiveCount(0); logEntries=[]; renderAll();
+    setActiveCount(0); logEntries=[]; advancedAtCount = -1;
+    warnedAtCount = -1; warnedExtraAtCount = -1; warnedSitAtCount = -1; lastSujudLevel = null;
+    renderAll();
   };
 
   // ---- mode switch ----
@@ -1365,7 +1389,7 @@
   const SUJUD_RELEASE_HI = 56, SUJUD_RELEASE_LO = 14; // leaving the range re-arms detection
   let motionHist = [];
   // Mistake alerts (Motion mode): a long triple buzz + red note under the number
-  let warnTimer = null, warnedAtCount = -1;
+  let warnTimer = null, warnedAtCount = -1, warnedExtraAtCount = -1, warnedSitAtCount = -1, lastSujudLevel = null;
   let sitForCount = -1, sitSince = 0, sitSeen = false;
   function motionWarn(text){
     if(navigator.vibrate) navigator.vibrate([350,120,350,120,350]);
@@ -1634,12 +1658,27 @@
     const stoodUp = !(sujudCount > 0 && sujudCount % 2 === 0) || advancedAtCount === sujudCount;
     const sujudArmed = stoodUp && !motionDipped && (now - motionLastHighAt) <= SUJUD_ARM_WINDOW_MS;
     const plateau = sujudArmed ? sujudPlateau(motionHist, now) : null;
+    const plateauAny = (!motionDipped && (now - motionLastHighAt) <= SUJUD_ARM_WINDOW_MS) ? sujudPlateau(motionHist, now) : null;
     // Did you sit after the 2nd Sujud? (a real Tashahhud sit is a long, steady big tilt; the stand-up spike is brief)
     if(sitForCount !== sujudCount){ sitForCount = sujudCount; sitSince = 0; sitSeen = false; }
     if(smoothedTiltDelta > 55){
       if(!sitSince) sitSince = now;
       if(now - sitSince >= 1500) sitSeen = true;
     } else { sitSince = 0; }
+    // Mistake 3: a THIRD sujud in the same rak'ah (a steady Sujud-level tilt again, without having stood up)
+    if(motionState === 'up' && !stoodUp && plateauAny && sujudCount > 0 && sujudCount % 2 === 0 && warnedExtraAtCount !== sujudCount &&
+       lastSujudLevel !== null && Math.abs((plateauAny.lo + plateauAny.hi)/2 - lastSujudLevel) <= 5){
+      warnedExtraAtCount = sujudCount;
+      motionWarn('EXTRA SUJUD');
+    }
+    // Mistake 4: sat for Tashahhud after rak'ah 1 / 3 (a rak'ah you should STAND from), unless it is the last rak'ah
+    if(sitSeen && sujudCount > 0 && sujudCount % 2 === 0){
+      const rk = sujudCount / 2;
+      if(rk % 2 === 1 && rk < totalRakahs && warnedSitAtCount !== sujudCount){
+        warnedSitAtCount = sujudCount;
+        motionWarn('FALSE TASHAHHUD');
+      }
+    }
     // Mistake 1: stood up after only ONE Sujud of a rak'ah
     if(sujudCount > 0 && sujudCount % 2 === 1 && warnedAtCount !== sujudCount && standingSteady(motionHist, now)){
       warnedAtCount = sujudCount;
@@ -1665,6 +1704,7 @@
         motionStatus.classList.add('dark');
         if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
           motionLastEventTime = now;
+          lastSujudLevel = (plateau.lo + plateau.hi) / 2;
           motionLog('SUJUD steady at ' + plateau.lo.toFixed(0) + '-' + plateau.hi.toFixed(0) + ' -> COUNTED');
           motionStatus.textContent = 'Sujud counted \u00b7 watching\u2026';
           addCount();
@@ -1834,6 +1874,51 @@
     document.addEventListener('click', (e)=>{
       if(themePanel.style.display !== 'none' && !themePanel.contains(e.target) && e.target !== themeBtn) themePanel.style.display = 'none';
     });
+  })();
+
+  // ---- Language (English / العربية) ----
+  (function(){
+    const cur = window.RAKAH_LANG || 'en';
+    document.querySelectorAll('.lang-pill').forEach(b=>{
+      b.classList.toggle('active', b.dataset.lang === cur);
+      b.addEventListener('click', ()=>{
+        if(b.dataset.lang === cur) return;
+        try{ localStorage.setItem('rakah-lang', b.dataset.lang); }catch(e){}
+        location.reload();
+      });
+    });
+  })();
+
+  // ---- First-time guide (also opened from Settings > How to use) ----
+  (function(){
+    const guide = document.getElementById('guide');
+    const slides = Array.from(guide.querySelectorAll('.guide-slide'));
+    const dots = document.getElementById('guideDots');
+    const nextBtn = document.getElementById('guideNext');
+    const skipBtn = document.getElementById('guideSkip');
+    let i = 0;
+    dots.innerHTML = slides.map(()=>'<span></span>').join('');
+    function show(n){
+      i = n;
+      slides.forEach((sl,k)=> sl.style.display = (k===i) ? 'block' : 'none');
+      Array.from(dots.children).forEach((d,k)=> d.classList.toggle('on', k===i));
+      nextBtn.textContent = (i === slides.length-1) ? 'Start' : 'Next';
+      skipBtn.style.visibility = (i === slides.length-1) ? 'hidden' : 'visible';
+    }
+    function open(){ show(0); guide.style.display = 'flex'; }
+    function close(){
+      guide.style.display = 'none';
+      try{ localStorage.setItem('rakah-guide-seen', '1'); }catch(e){}
+    }
+    nextBtn.addEventListener('click', ()=>{ if(i < slides.length-1) show(i+1); else close(); });
+    skipBtn.addEventListener('click', close);
+    document.getElementById('guideBtn').addEventListener('click', ()=>{
+      document.getElementById('themePanel').style.display = 'none';
+      open();
+    });
+    let seen = false;
+    try{ seen = !!localStorage.getItem('rakah-guide-seen'); }catch(e){}
+    if(!seen) setTimeout(open, 500);
   })();
 
   // ---- Qibla compass ----
@@ -2165,5 +2250,6 @@
     renderRows(); tick(); setInterval(tick,1000);
   })();
 </script>
+<script src="./i18n.js"></script>
 </body>
 </html>

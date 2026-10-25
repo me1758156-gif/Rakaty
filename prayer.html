@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Prayer Times">
-<script>try{var __t=localStorage.getItem("rakah-theme");if(__t)document.documentElement.setAttribute("data-theme",__t);}catch(e){}</script>
+<script>try{var __t=localStorage.getItem("rakah-theme");if(__t)document.documentElement.setAttribute("data-theme",__t);if(localStorage.getItem("rakah-lang")==="ar"){document.documentElement.setAttribute("lang","ar");document.documentElement.setAttribute("dir","rtl");}}catch(e){}</script>
 <link rel="stylesheet" href="./fonts/fonts.css">
 <style>
   :root{ --sp-1:6px; --sp-2:10px; --sp-3:16px; --sp-4:22px; --sp-5:32px; --r-pill:999px; --r-lg:22px; --r-md:12px; --r-sm:8px; --gold:#E3B866; }
@@ -143,5 +143,6 @@
     renderRows(); tick(); setInterval(tick,1000);
   })();
 </script>
+<script src="./i18n.js"></script>
 </body>
 </html>
