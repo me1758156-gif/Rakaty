@@ -1048,7 +1048,7 @@
       }
     }
     // Motion mode shows only two numbers: the big rak'ah, and a small Sujud count (0, 1, 2) inside it
-    const simple = (mode==='motion' && totalRakahs && count < map.length);
+    const simple = ((mode==='motion' || mode==='sujud') && totalRakahs && count < map.length);
     [rakahArabic, rakahOf, phaseLabel, phaseLabelAr].forEach(el=>{ el.style.display = simple ? 'none' : ''; });
     sujudMini.style.display = simple ? 'flex' : 'none';
     if(simple){
