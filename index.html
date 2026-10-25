@@ -650,15 +650,11 @@
     <button class="back-link" id="backToPrayer" type="button">← Change prayer</button>
     <div class="step-label">Step 2 · How should it track?</div>
     <div class="mode-cards" id="modeSwitch">
-      <div class="mode-card active" data-mode="takbir">
-        <div class="mode-card-top"><span class="mode-card-icon">🎙️</span><span>Voice · Manual</span></div>
-        <div class="mode-card-desc">Listens for "Allahu Akbar" out loud, or tap the button yourself.</div>
-      </div>
       <div class="mode-card" data-mode="sujud">
         <div class="mode-card-top"><span class="mode-card-icon">📷</span><span>Camera · Sujud</span></div>
         <div class="mode-card-desc">Lay the phone screen-up on your mat — the front camera senses Sujud.</div>
       </div>
-      <div class="mode-card" data-mode="motion">
+      <div class="mode-card active" data-mode="motion">
         <div class="mode-card-top"><span class="mode-card-icon">📱</span><span>Motion · Pocket</span></div>
         <div class="mode-card-desc">Keep the phone in your pocket — it senses the bow of Sujud by feel.</div>
       </div>
@@ -733,24 +729,15 @@
       </div>
     </div>
 
-    <div class="status" id="statusLine"><span class="dot"></span><span id="statusText">Tap "Start Listening" or count manually</span></div>
+    <div class="status" id="statusLine" style="display:none;"><span class="dot"></span><span id="statusText">Tap "Start Listening" or count manually</span></div>
 
     <div class="controls">
-      <button class="btn-main" id="listenBtn">Start Listening</button>
-      <button class="btn-secondary" id="tapBtn">+1 Takbir</button>
       <button class="btn-secondary" id="pauseBtn" style="display:none; flex:1;">Pause</button>
     </div>
     <div class="row2">
-      <button class="btn-secondary" id="undoBtn">Undo last</button>
       <button class="btn-secondary" id="resetBtn">Reset</button>
     </div>
 
-  <div class="log-panel">
-    <div class="log-head"><span id="logHeadLabel">Takbir Log</span><span id="logCount">0 heard</span></div>
-    <div class="log-list" id="logList">
-      <div class="log-empty">No takbirs counted yet</div>
-    </div>
-  </div>
   </div>
 </div>
 
@@ -772,7 +759,7 @@
   let takbirCount = 0;
   let sujudMap = [];
   let sujudCount = 0;
-  let mode = 'takbir'; // 'takbir' (voice/manual), 'sujud' (camera), or 'motion' (pocket)
+  let mode = 'motion'; // 'sujud' (camera) or 'motion' (pocket)
   let isListening = false;
   let recognition = null;
   let lastDetectTime = 0;
@@ -793,12 +780,7 @@
   const sujudMiniLabel = document.getElementById('sujudMiniLabel');
   const statusLine = document.getElementById('statusLine');
   const statusText = document.getElementById('statusText');
-  const listenBtn = document.getElementById('listenBtn');
-  const tapBtn = document.getElementById('tapBtn');
-  const undoBtn = document.getElementById('undoBtn');
   const resetBtn = document.getElementById('resetBtn');
-  const logList = document.getElementById('logList');
-  const logCount = document.getElementById('logCount');
 
   // ---- wizard step navigation ----
   const steps = {
@@ -806,7 +788,7 @@
     mode: document.getElementById('stepMode'),
     track: document.getElementById('stepTrack'),
   };
-  const modeLabels = {takbir:'Voice mode', sujud:'Camera mode', motion:'Motion mode'};
+  const modeLabels = {sujud:'Camera mode', motion:'Motion mode'};
   let selectedPrayerLabel = '';
   const trackSummaryText = document.getElementById('trackSummaryText');
 
@@ -1075,14 +1057,6 @@
       rakahNum.classList.remove('complete-check');
       sujudMiniNum.textContent = adv ? 0 : (count===0 ? 0 : ((count-1)%2)+1);
     }
-    logCount.textContent = count + ' heard';
-    if(logEntries.length===0){
-      logList.innerHTML = '<div class="log-empty">No '+unitLabel().toLowerCase()+'s counted yet</div>';
-    } else {
-      logList.innerHTML = logEntries.slice().reverse().map(e=>
-        '<div class="log-item"><span class="n">#'+e.n+'</span><span class="r">Rakah '+e.rakah+'</span><span class="t">'+e.time+'</span></div>'
-      ).join('');
-    }
   }
 
   function addCount(){
@@ -1099,7 +1073,7 @@
     renderAll();
     pulseLastBead();
     // Voice mode stays completely silent (no buzz) so nothing breaks your focus in prayer
-    if(navigator.vibrate && mode !== 'takbir') navigator.vibrate(mode==='motion' ? [70,60,70] : 40);
+    if(navigator.vibrate) navigator.vibrate(mode==='motion' ? [70,60,70] : 40);
     const rw = document.querySelector('.ring-wrap');
     if(rw){ rw.classList.remove('shake'); void rw.offsetWidth; rw.classList.add('shake'); }
   }
@@ -1117,11 +1091,9 @@
   function flashStatus(msg){
     const prev = statusText.textContent;
     statusText.textContent = msg;
-    setTimeout(()=>{ if(!isListening) statusText.textContent = prev; }, 1800);
+    setTimeout(()=>{ statusText.textContent = prev; }, 1800);
   }
 
-  tapBtn.onclick = addCount;
-  undoBtn.onclick = undoCount;
   resetBtn.onclick = ()=>{
     setActiveCount(0); logEntries=[]; renderAll();
   };
@@ -1129,30 +1101,24 @@
   // ---- mode switch ----
   const modeChips = document.querySelectorAll('.mode-card');
   const cameraPanel = document.getElementById('cameraPanel');
-  const logHeadLabel = document.getElementById('logHeadLabel');
   const motionPanel = document.getElementById('motionPanel');
+  function applyModeUI(){
+    cameraPanel.style.display = (mode==='sujud') ? 'block' : 'none';
+    motionPanel.style.display = (mode==='motion') ? 'block' : 'none';
+    // Camera / Motion modes are automatic: only the Reset button (and Pause in Motion mode) are shown
+    document.querySelector('.controls').style.display = (mode==='sujud') ? 'none' : '';
+  }
+  applyModeUI();
   modeChips.forEach(chip=>{
     chip.onclick = ()=>{
       const newMode = chip.dataset.mode;
       if(newMode!==mode){
-        if(mode==='takbir' && isListening) stopListening();
         if(mode==='sujud' && camActive) stopCamera();
         if(mode==='motion' && motionActive) stopMotion();
         mode = newMode;
         modeChips.forEach(c=>c.classList.remove('active'));
         chip.classList.add('active');
-        cameraPanel.style.display = (mode==='sujud') ? 'block' : 'none';
-        motionPanel.style.display = (mode==='motion') ? 'block' : 'none';
-        listenBtn.style.display = (mode==='takbir') ? '' : 'none';
-        statusLine.style.display = (mode==='takbir') ? '' : 'none';
-        tapBtn.textContent = (mode==='takbir') ? '+1 Takbir' : '+1 Sujud';
-        logHeadLabel.textContent = (mode==='takbir') ? 'Takbir Log' : 'Sujud Log';
-        // Camera / Motion modes are automatic: no manual +1 Sujud, no Undo, no Sujud log
-        const manual = (mode==='takbir');
-        tapBtn.style.display = manual ? '' : 'none';
-        undoBtn.style.display = manual ? '' : 'none';
-        document.querySelector('.log-panel').style.display = manual ? '' : 'none';
-        document.querySelector('.controls').style.display = (mode==='sujud') ? 'none' : '';
+        applyModeUI();
         buildRing();
         renderAll();
       }
@@ -1160,97 +1126,6 @@
       goToStep('track');
     };
   });
-
-  // ---- speech recognition ----
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  // Chrome/Android plays its own system tone each time speech recognition
-  // starts a session — that's not something this app generates, and there's
-  // no direct API to silence it. Keeping a silent audio stream active for
-  // the whole listening period is a known workaround that suppresses it on
-  // most devices; if it doesn't on yours, the phone's own sound settings
-  // (Sound & vibration → Other sounds) is the reliable fix.
-  let silentAudioCtx = null;
-  let silentOsc = null;
-  function startSilentKeepAlive(){
-    try{
-      silentAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const gain = silentAudioCtx.createGain();
-      gain.gain.value = 0;
-      silentOsc = silentAudioCtx.createOscillator();
-      silentOsc.frequency.value = 20;
-      silentOsc.connect(gain);
-      gain.connect(silentAudioCtx.destination);
-      silentOsc.start();
-    }catch(e){ /* not critical — recognition still works without it */ }
-  }
-  function stopSilentKeepAlive(){
-    try{
-      if(silentOsc){ silentOsc.stop(); silentOsc.disconnect(); silentOsc = null; }
-      if(silentAudioCtx){ silentAudioCtx.close(); silentAudioCtx = null; }
-    }catch(e){}
-  }
-
-  function matchesTakbir(transcript){
-    const t = transcript.toLowerCase();
-    return t.includes('akbar') || t.includes('أكبر') || t.includes('اكبر');
-  }
-
-  function startListening(){
-    if(!SpeechRecognition){
-      statusLine.classList.remove('live');
-      statusText.textContent = "Voice recognition isn't supported in this browser — use +1 Takbir instead";
-      return;
-    }
-    if(!totalRakahs){ flashStatus('Pick a prayer first'); return; }
-    recognition = new SpeechRecognition();
-    recognition.lang = 'ar-SA';
-    recognition.continuous = true;
-    recognition.interimResults = false;
-
-    recognition.onresult = (event)=>{
-      const last = event.results[event.results.length-1];
-      const transcript = last[0].transcript;
-      if(matchesTakbir(transcript) && Date.now()-lastDetectTime > 1500){
-        lastDetectTime = Date.now();
-        addCount();
-      }
-    };
-    recognition.onerror = (e)=>{
-      if(e.error === 'no-speech' || e.error === 'aborted') return;
-      statusText.textContent = 'Mic issue (' + e.error + ') — you can keep using +1 Takbir';
-    };
-    recognition.onend = ()=>{
-      if(isListening){
-        try{ recognition.start(); }catch(e){}
-      }
-    };
-    try{
-      recognition.start();
-      isListening = true;
-      startSilentKeepAlive();
-      listenBtn.textContent = 'Stop Listening';
-      listenBtn.classList.add('stop');
-      centerPlate.classList.add('listening');
-      statusLine.classList.add('live');
-      statusText.textContent = 'Listening for "Allahu Akbar" …';
-    }catch(e){
-      statusText.textContent = 'Could not start the microphone';
-    }
-  }
-
-  function stopListening(){
-    isListening = false;
-    if(recognition){ try{ recognition.stop(); }catch(e){} }
-    stopSilentKeepAlive();
-    listenBtn.textContent = 'Start Listening';
-    listenBtn.classList.remove('stop');
-    centerPlate.classList.remove('listening');
-    statusLine.classList.remove('live');
-    statusText.textContent = 'Tap "Start Listening" or count manually';
-  }
-
-  listenBtn.onclick = ()=> isListening ? stopListening() : startListening();
 
   // ---- camera-based Sujud detection ----
   // Watches the phone's camera for a sustained drop in brightness (the
