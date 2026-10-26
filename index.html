@@ -756,7 +756,7 @@
     <div class="guide-slide"><div class="guide-ico">🕌</div><h2>Welcome</h2><p>Rakah Tracker counts your prayer for you, so you never lose track of which rak'ah you are in.</p></div>
     <div class="guide-slide"><div class="guide-ico">📱</div><h2>Place your phone</h2><p>Motion: keep the phone in your pocket, upright, the same way every time. Camera: lay it screen-up on your mat.</p></div>
     <div class="guide-slide"><div class="guide-ico">🤲</div><h2>Start praying</h2><p>Pick your prayer, tap Enable Motion, then stand still until the countdown ends. After that, just pray.</p></div>
-    <div class="guide-slide"><div class="guide-ico">📳</div><h2>What the buzzes mean</h2><p>Two short buzzes: a sujud was counted. One long triple buzz: a mistake (missed or extra sujud, missing or false Tashahhud).</p></div>
+    <div class="guide-slide"><div class="guide-ico">📳</div><h2>What the buzzes mean</h2><p>Two short buzzes: a sujud was counted. One long triple buzz: a mistake (missed or extra sujud, or no Tashahhud sit).</p></div>
     <div class="guide-slide"><div class="guide-ico">⏸️</div><h2>Need to look at the screen?</h2><p>Tap Pause before taking the phone out, and Resume when it is back in your pocket. The big number is your rak'ah; the small one counts the sujuds in it.</p></div>
     <div class="guide-dots" id="guideDots"></div>
     <div class="guide-actions">
@@ -1122,7 +1122,7 @@
 
   resetBtn.onclick = ()=>{
     setActiveCount(0); logEntries=[]; advancedAtCount = -1;
-    warnedAtCount = -1; warnedExtraAtCount = -1; warnedSitAtCount = -1; lastSujudLevel = null;
+    warnedAtCount = -1; warnedExtraAtCount = -1; lastSujudLevel = null;
     renderAll();
   };
 
@@ -1411,7 +1411,7 @@
   const SUJUD_RELEASE_HI = 56, SUJUD_RELEASE_LO = 14; // leaving the range re-arms detection
   let motionHist = [];
   // Mistake alerts (Motion mode): a long triple buzz + red note under the number
-  let warnTimer = null, warnedAtCount = -1, warnedExtraAtCount = -1, warnedSitAtCount = -1, lastSujudLevel = null;
+  let warnTimer = null, warnedAtCount = -1, warnedExtraAtCount = -1, lastSujudLevel = null;
   let sitForCount = -1, sitSince = 0, sitSeen = false;
   function motionWarn(text){
     if(navigator.vibrate) navigator.vibrate([350,120,350,120,350]);
@@ -1692,14 +1692,6 @@
        lastSujudLevel !== null && Math.abs((plateauAny.lo + plateauAny.hi)/2 - lastSujudLevel) <= 5){
       warnedExtraAtCount = sujudCount;
       motionWarn('EXTRA SUJUD');
-    }
-    // Mistake 4: sat for Tashahhud after rak'ah 1 / 3 (a rak'ah you should STAND from), unless it is the last rak'ah
-    if(sitSeen && sujudCount > 0 && sujudCount % 2 === 0){
-      const rk = sujudCount / 2;
-      if(rk % 2 === 1 && rk < totalRakahs && warnedSitAtCount !== sujudCount){
-        warnedSitAtCount = sujudCount;
-        motionWarn('FALSE TASHAHHUD');
-      }
     }
     // Mistake 1: stood up after only ONE Sujud of a rak'ah
     if(sujudCount > 0 && sujudCount % 2 === 1 && warnedAtCount !== sujudCount && standingSteady(motionHist, now)){
