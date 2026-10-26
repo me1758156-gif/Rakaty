@@ -581,7 +581,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="./glass.css?v=55">
+<link rel="stylesheet" href="./glass.css?v=56">
 </head>
 <body>
 <div class="app">
@@ -766,7 +766,7 @@
     <div class="guide-slide"><div class="guide-ico">🕌</div><h2>Welcome</h2><p>Rakah Tracker counts your prayer for you, so you never lose track of which rak'ah you are in.</p></div>
     <div class="guide-slide"><div class="guide-ico">📱</div><h2>Place your phone</h2><p>Motion: keep the phone in your pocket, upright, the same way every time. Camera: lay it screen-up on your mat.</p></div>
     <div class="guide-slide"><div class="guide-ico">🤲</div><h2>Start praying</h2><p>Pick your prayer, tap Enable Motion, then stand still until the countdown ends. After that, just pray.</p></div>
-    <div class="guide-slide"><div class="guide-ico">📳</div><h2>What the buzzes mean</h2><p>Two short buzzes: a sujud was counted. One long triple buzz: a mistake (missed or extra sujud, or no Tashahhud sit).</p></div>
+    <div class="guide-slide"><div class="guide-ico">📳</div><h2>What the buzzes mean</h2><p>Two short buzzes: a sujud was counted. One long triple buzz: a mistake (a missed sujud, or no Tashahhud sit).</p></div>
     <div class="guide-slide"><div class="guide-ico">⏸️</div><h2>Need to look at the screen?</h2><p>Hold a finger on the dark screen to unlock it (this also pauses counting). Tap Resume when the phone is back in your pocket. The big number is your rak'ah; the small one counts the sujuds in it.</p></div>
     <div class="guide-dots" id="guideDots"></div>
     <div class="guide-actions">
@@ -1140,7 +1140,7 @@
 
   resetBtn.onclick = ()=>{
     setActiveCount(0); logEntries=[]; advancedAtCount = -1;
-    warnedAtCount = -1; warnedExtraAtCount = -1; lastSujudLevel = null;
+    warnedAtCount = -1;
     renderAll();
   };
 
@@ -1458,7 +1458,7 @@
   const SUJUD_RELEASE_HI = 56, SUJUD_RELEASE_LO = 14; // leaving the range re-arms detection
   let motionHist = [];
   // Mistake alerts (Motion mode): a long triple buzz + red note under the number
-  let warnTimer = null, warnedAtCount = -1, warnedExtraAtCount = -1, lastSujudLevel = null;
+  let warnTimer = null, warnedAtCount = -1;
   let sitForCount = -1, sitSince = 0, sitSeen = false;
   function motionWarn(text){
     if(navigator.vibrate) navigator.vibrate([350,120,350,120,350]);
@@ -1475,6 +1475,10 @@
   // never count as a Sujud, so a Sujud only counts shortly after such a big tilt, and not once the
   // phone has gone back to its standing position.
   const SUJUD_ARM_DEG = 45, SUJUD_ARM_WINDOW_MS = 2500;
+  // After standing up for the next rak'ah, a real kneel never comes within seconds (you recite first), so
+  // movement right after standing - like taking the phone out to look at it - is ignored for this long.
+  const STAND_SETTLE_MS = 4000;
+  let advancedAt = 0;
   let motionLastHighAt = 0, motionDipped = true;
   const STAND_MAX_DEG = 18, STAND_HOLD_MS = 500, STAND_FLAT_DEG = 10;
   function standingSteady(hist, now){
@@ -1728,22 +1732,18 @@
     if(smoothedTiltDelta > SUJUD_ARM_DEG){ motionLastHighAt = now; motionDipped = false; }
     else if(smoothedTiltDelta < SUJUD_RELEASE_LO){ motionDipped = true; }
     // after a finished rak'ah (even count) the next Sujud only counts once you have really stood up
-    const stoodUp = !(sujudCount > 0 && sujudCount % 2 === 0) || advancedAtCount === sujudCount;
-    const sujudArmed = stoodUp && !motionDipped && (now - motionLastHighAt) <= SUJUD_ARM_WINDOW_MS;
+    const afterRakah = sujudCount > 0 && sujudCount % 2 === 0;
+    const stoodUp = !afterRakah || advancedAtCount === sujudCount;
+    // ...and the kneel itself must start a few seconds AFTER standing: a big movement right after standing is you handling the phone
+    const kneelAfterSettle = !afterRakah || motionLastHighAt >= advancedAt + STAND_SETTLE_MS;
+    const sujudArmed = stoodUp && kneelAfterSettle && !motionDipped && (now - motionLastHighAt) <= SUJUD_ARM_WINDOW_MS;
     const plateau = sujudArmed ? sujudPlateau(motionHist, now) : null;
-    const plateauAny = (!motionDipped && (now - motionLastHighAt) <= SUJUD_ARM_WINDOW_MS) ? sujudPlateau(motionHist, now) : null;
     // Did you sit after the 2nd Sujud? (a real Tashahhud sit is a long, steady big tilt; the stand-up spike is brief)
     if(sitForCount !== sujudCount){ sitForCount = sujudCount; sitSince = 0; sitSeen = false; }
     if(smoothedTiltDelta > 55){
       if(!sitSince) sitSince = now;
       if(now - sitSince >= 1500) sitSeen = true;
     } else { sitSince = 0; }
-    // Mistake 3: a THIRD sujud in the same rak'ah (a steady Sujud-level tilt again, without having stood up)
-    if(motionState === 'up' && !stoodUp && plateauAny && sujudCount > 0 && sujudCount % 2 === 0 && warnedExtraAtCount !== sujudCount &&
-       lastSujudLevel !== null && Math.abs((plateauAny.lo + plateauAny.hi)/2 - lastSujudLevel) <= 5){
-      warnedExtraAtCount = sujudCount;
-      motionWarn('EXTRA SUJUD');
-    }
     // Mistake 1: stood up after only ONE Sujud of a rak'ah
     if(sujudCount > 0 && sujudCount % 2 === 1 && warnedAtCount !== sujudCount && standingSteady(motionHist, now)){
       warnedAtCount = sujudCount;
@@ -1753,6 +1753,7 @@
     if(advancedAtCount !== sujudCount && sujudCount > 0 && sujudCount % 2 === 0 &&
        sujudCount < sujudMap.length && standingSteady(motionHist, now)){
       advancedAtCount = sujudCount;
+      advancedAt = now;
       motionDipped = true;
       // Mistake 2: stood up after rak'ah 2 of a 3/4-rak'ah prayer without sitting for the first Tashahhud
       if(sujudMap[sujudCount-1] === 2 && totalRakahs > 2 && !sitSeen) motionWarn('NO TASHAHHUD SIT');
@@ -1769,7 +1770,6 @@
         motionStatus.classList.add('dark');
         if(now - motionLastEventTime > MOTION_COOLDOWN_MS){
           motionLastEventTime = now;
-          lastSujudLevel = (plateau.lo + plateau.hi) / 2;
           motionLog('SUJUD steady at ' + plateau.lo.toFixed(0) + '-' + plateau.hi.toFixed(0) + ' -> COUNTED');
           motionStatus.textContent = 'Sujud counted \u00b7 watching\u2026';
           addCount();
@@ -2359,6 +2359,6 @@
   })();
 </script>
 <script>if(window.rakahQuick) window.rakahQuick();</script>
-<script src="./i18n.js?v=55"></script>
+<script src="./i18n.js?v=56"></script>
 </body>
 </html>
