@@ -607,6 +607,8 @@
     </div>
     <div class="set-label">Quick start</div>
     <label class="switch-row"><span>Opens on the prayer whose time it is now, ready to track</span><input type="checkbox" id="quickToggle"><i class="switch"></i></label>
+    <div class="set-label">Pocket lock</div>
+    <label class="switch-row"><span>In Motion mode the screen goes dark and ignores touches. Hold a finger on it to unlock (this also pauses counting)</span><input type="checkbox" id="lockToggle"><i class="switch"></i></label>
     <div class="set-label">Language</div>
     <div class="lang-row">
       <button class="lang-pill" data-lang="en" type="button" data-notr>English</button>
@@ -751,13 +753,21 @@
   </div>
 </div>
 
+<div class="pocket-lock" id="pocketLock" style="display:none;">
+  <div class="lock-num" id="lockRakah">1</div>
+  <div class="lock-mini"><span id="lockSujud">0</span><small>SUJUD</small></div>
+  <div class="lock-msg" id="lockMsg"></div>
+  <div class="lock-hint">Hold to unlock</div>
+  <div class="lock-bar"><i id="lockBar"></i></div>
+</div>
+
 <div class="guide" id="guide" style="display:none;">
   <div class="guide-card">
     <div class="guide-slide"><div class="guide-ico">🕌</div><h2>Welcome</h2><p>Rakah Tracker counts your prayer for you, so you never lose track of which rak'ah you are in.</p></div>
     <div class="guide-slide"><div class="guide-ico">📱</div><h2>Place your phone</h2><p>Motion: keep the phone in your pocket, upright, the same way every time. Camera: lay it screen-up on your mat.</p></div>
     <div class="guide-slide"><div class="guide-ico">🤲</div><h2>Start praying</h2><p>Pick your prayer, tap Enable Motion, then stand still until the countdown ends. After that, just pray.</p></div>
     <div class="guide-slide"><div class="guide-ico">📳</div><h2>What the buzzes mean</h2><p>Two short buzzes: a sujud was counted. One long triple buzz: a mistake (missed or extra sujud, or no Tashahhud sit).</p></div>
-    <div class="guide-slide"><div class="guide-ico">⏸️</div><h2>Need to look at the screen?</h2><p>Tap Pause before taking the phone out, and Resume when it is back in your pocket. The big number is your rak'ah; the small one counts the sujuds in it.</p></div>
+    <div class="guide-slide"><div class="guide-ico">⏸️</div><h2>Need to look at the screen?</h2><p>Hold a finger on the dark screen to unlock it (this also pauses counting). Tap Resume when the phone is back in your pocket. The big number is your rak'ah; the small one counts the sujuds in it.</p></div>
     <div class="guide-dots" id="guideDots"></div>
     <div class="guide-actions">
       <button class="btn-secondary" id="guideSkip" type="button">Skip</button>
@@ -803,6 +813,13 @@
   const sujudMini = document.getElementById('sujudMini');
   const sujudMiniNum = document.getElementById('sujudMiniNum');
   const sujudMiniLabel = document.getElementById('sujudMiniLabel');
+  const pocketLock = document.getElementById('pocketLock');
+  const lockRakah = document.getElementById('lockRakah');
+  const lockSujud = document.getElementById('lockSujud');
+  const lockMsg = document.getElementById('lockMsg');
+  const lockBar = document.getElementById('lockBar');
+  function syncLockNumbers(){ lockRakah.textContent = rakahNum.textContent; lockSujud.textContent = sujudMiniNum.textContent; }
+  function hidePocketLock(){ pocketLock.style.display = 'none'; }
   const statusLine = document.getElementById('statusLine');
   const statusText = document.getElementById('statusText');
   const resetBtn = document.getElementById('resetBtn');
@@ -1083,6 +1100,7 @@
       rakahNum.classList.remove('complete-check');
       sujudMiniNum.textContent = adv ? 0 : (count===0 ? 0 : ((count-1)%2)+1);
     }
+    if(totalRakahs && count >= map.length) hidePocketLock(); else syncLockNumbers();
   }
 
   function addCount(){
@@ -1383,10 +1401,39 @@
       pauseBtn.textContent = 'Pause';
       pauseBtn.style.borderColor = ''; pauseBtn.style.color = '';
       motionLastEventTime = Date.now();
+      setTimeout(()=>{ if(motionActive && !motionPaused) showPocketLock(); }, PAUSE_SETTLE_MS + 300);
     }
     if(navigator.vibrate) navigator.vibrate(on ? 40 : [40,40,40]);
   }
   pauseBtn.onclick = ()=>{ if(motionActive) setPaused(!motionPaused); };
+
+  // ---- Pocket lock: dark screen that ignores touches; hold a finger on it to unlock ----
+  const LOCK_HOLD_MS = 900;
+  function lockEnabled(){ try{ return localStorage.getItem('rakah-lock') !== '0'; }catch(e){ return true; } }
+  function showPocketLock(){
+    if(!lockEnabled() || !motionActive || motionPaused || mode !== 'motion') return;
+    syncLockNumbers();
+    pocketLock.style.display = 'flex';
+  }
+  let lockHoldTimer = null;
+  function cancelLockHold(){
+    clearTimeout(lockHoldTimer); lockHoldTimer = null;
+    lockBar.style.transition = 'none'; lockBar.style.width = '0';
+  }
+  pocketLock.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    cancelLockHold();
+    void lockBar.offsetWidth;
+    lockBar.style.transition = 'width ' + LOCK_HOLD_MS + 'ms linear'; lockBar.style.width = '100%';
+    lockHoldTimer = setTimeout(()=>{
+      cancelLockHold();
+      hidePocketLock();
+      if(motionActive && !motionPaused) setPaused(true);   // taking the phone out must not be counted as a Sujud
+    }, LOCK_HOLD_MS);
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=> pocketLock.addEventListener(ev, cancelLockHold));
+  pocketLock.addEventListener('contextmenu', e=> e.preventDefault());
+
   let motionLastEventTime = 0;
   let motionLoopId = null;
   let motionWatchdogId = null;
@@ -1419,6 +1466,8 @@
     sujudMiniLabel.textContent = text;
     clearTimeout(warnTimer);
     warnTimer = setTimeout(()=>{ sujudMini.classList.remove('warn'); sujudMiniLabel.textContent = 'SUJUD'; }, 6000);
+    lockMsg.textContent = text; lockMsg.classList.add('on');
+    setTimeout(()=>{ lockMsg.classList.remove('on'); lockMsg.textContent = ''; }, 6000);
     motionLog('WARNING: ' + text);
   }
   // A real Sujud is always entered from a big tilt (kneeling down, or coming from sitting) without
@@ -1539,6 +1588,7 @@
     if(motionWatchdogId) clearTimeout(motionWatchdogId);
     if(motionPrepIntervalId){ clearInterval(motionPrepIntervalId); motionPrepIntervalId = null; }
     motionActive = false;
+    hidePocketLock();
     motionBaselineVec = null;
     motionCalibratedVec = null;
     smoothedTiltDelta = null;
@@ -1575,6 +1625,7 @@
         }
         smoothedTiltDelta = null;
         motionStatus.textContent = 'Calibrated · watching for Sujud…';
+        showPocketLock();
       }
     }, 100);
   }
@@ -1903,6 +1954,13 @@
     navigator.serviceWorker.ready.then(()=> caches.keys()).then(keys=>{
       return caches.open(keys.filter(k=>k.indexOf('rakah-tracker')===0).pop()).then(c=> c.match('./index.html'));
     }).then(r=> show(!!r)).catch(()=> show(false));
+  })();
+
+  // ---- Pocket lock switch (remembered; on unless turned off) ----
+  (function(){
+    const t = document.getElementById('lockToggle');
+    try{ t.checked = localStorage.getItem('rakah-lock') !== '0'; }catch(e){ t.checked = true; }
+    t.addEventListener('change', ()=>{ try{ localStorage.setItem('rakah-lock', t.checked ? '1' : '0'); }catch(e){} });
   })();
 
   // ---- Quick start switch (remembered) ----
