@@ -581,7 +581,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="./glass.css">
+<link rel="stylesheet" href="./glass.css?v=55">
 </head>
 <body>
 <div class="app">
@@ -2227,7 +2227,7 @@
 
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
-      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'}).catch(()=>{});
       try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
     });
   }
@@ -2359,6 +2359,6 @@
   })();
 </script>
 <script>if(window.rakahQuick) window.rakahQuick();</script>
-<script src="./i18n.js"></script>
+<script src="./i18n.js?v=55"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakah-tracker-v54';
+const CACHE_NAME = 'rakah-tracker-v55';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -36,7 +36,8 @@ const NETWORK_WAIT_MS = 2500;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    // cache:'reload' = always fetch fresh files from the server when saving (never the browser's own 10-minute HTTP cache)
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' }))))
   );
   self.skipWaiting();
 });
@@ -68,7 +69,7 @@ function pageResponse(request, fallback) {
     let settled = false;
     const finish = (r) => { if (!settled && r) { settled = true; resolve(r); } };
     const timer = setTimeout(() => { fallback(request).then(finish); }, NETWORK_WAIT_MS);
-    fetch(request)
+    fetch(request, { cache: 'no-cache' })
       .then((response) => {
         clearTimeout(timer);
         if (response && response.ok) {
