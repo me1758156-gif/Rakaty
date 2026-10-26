@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakah-tracker-v53';
+const CACHE_NAME = 'rakah-tracker-v54';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -63,11 +63,11 @@ async function savedPage(request) {
 
 // Pages: online -> newest version (and refresh the saved copy). Offline, or network
 // slower than NETWORK_WAIT_MS -> the saved copy, instantly.
-function pageResponse(request) {
+function pageResponse(request, fallback) {
   return new Promise((resolve) => {
     let settled = false;
     const finish = (r) => { if (!settled && r) { settled = true; resolve(r); } };
-    const timer = setTimeout(() => { savedPage(request).then(finish); }, NETWORK_WAIT_MS);
+    const timer = setTimeout(() => { fallback(request).then(finish); }, NETWORK_WAIT_MS);
     fetch(request)
       .then((response) => {
         clearTimeout(timer);
@@ -76,12 +76,12 @@ function pageResponse(request) {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           finish(response);
         } else {
-          savedPage(request).then((saved) => finish(saved || response));
+          fallback(request).then((saved) => finish(saved || response));
         }
       })
       .catch(() => {
         clearTimeout(timer);
-        savedPage(request).then((saved) => finish(saved || Response.error()));
+        fallback(request).then((saved) => finish(saved || Response.error()));
       });
   });
 }
@@ -95,11 +95,19 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('.html') || url.pathname.endsWith('/');
 
   if (isPage) {
-    event.respondWith(pageResponse(event.request));
+    event.respondWith(pageResponse(event.request, savedPage));
     return;
   }
 
-  // Everything else (styles, scripts, fonts, icons): saved copy first, so it is instant and works offline.
+  // The app's own styles and scripts are treated like pages: newest version when there is a
+  // connection, saved copy when there is not. This keeps the page and its stylesheet/script
+  // from ever getting out of step right after an update.
+  if (/\.(css|js|json)$/.test(url.pathname)) {
+    event.respondWith(pageResponse(event.request, (r) => caches.match(r, { ignoreSearch: true })));
+    return;
+  }
+
+  // Fonts and icons never change: saved copy first, so they are instant and work offline.
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cached) => {
       if (cached) return cached;
