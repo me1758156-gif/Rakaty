@@ -23,8 +23,8 @@
     'Colour':'اللون',
     'Language':'اللغة',
     'Pocket lock':'قفل الجيب',
-    'In Motion mode the screen goes dark and ignores touches. Hold a finger on it to unlock (this also pauses counting)':'في وضع الحركة تُظلم الشاشة وتتجاهل اللمس. اضغط بإصبعك مطولاً لفتح القفل (ويُوقف العدّ مؤقتاً أيضاً)',
-    'Hold to unlock':'اضغط مطولاً لفتح القفل',
+    'In Motion mode the screen goes dark and ignores touches. Double-tap it to unlock (this also pauses counting)':'في وضع الحركة تُظلم الشاشة وتتجاهل اللمس. انقر مرتين لفتح القفل (ويُوقف العدّ مؤقتاً أيضاً)',
+    'Double-tap to unlock':'انقر مرتين لفتح القفل',
     '✔ Works offline — everything is saved on this phone':'✔ يعمل بدون إنترنت — كل شيء محفوظ على هذا الهاتف',
     'Offline mode is not ready yet — open the app once with internet':'وضع عدم الاتصال غير جاهز بعد — افتح التطبيق مرة واحدة مع الإنترنت',
     'Quick start':'بداية سريعة',
@@ -107,7 +107,7 @@
     'What the buzzes mean':'معنى الاهتزازات',
     'Two short buzzes: a sujud was counted. One long triple buzz: a mistake (a missed sujud, or no Tashahhud sit).':'اهتزازتان قصيرتان: احتُسبت سجدة. ثلاث اهتزازات طويلة: خطأ (سجدة فاتتك، أو عدم الجلوس للتشهّد).',
     'Need to look at the screen?':'تريد النظر إلى الشاشة؟',
-    "Hold a finger on the dark screen to unlock it (this also pauses counting). Tap Resume when the phone is back in your pocket. The big number is your rak'ah; the small one counts the sujuds in it.":'اضغط بإصبعك مطولاً على الشاشة المظلمة لفتحها (ويُوقف هذا العدّ مؤقتاً). اضغط «استئناف» عندما يعود الهاتف إلى جيبك. الرقم الكبير هو ركعتك، والصغير يعدّ السجدات فيها.',
+    "Double-tap the dark screen to unlock it (this also pauses counting). Tap Resume when the phone is back in your pocket. The big number is your rak'ah; the small one counts the sujuds in it.":'انقر مرتين على الشاشة المظلمة لفتحها (ويُوقف هذا العدّ مؤقتاً). اضغط «استئناف» عندما يعود الهاتف إلى جيبك. الرقم الكبير هو ركعتك، والصغير يعدّ السجدات فيها.',
     'Skip':'تخطي','Next':'التالي','Start':'ابدأ',
     'Prayer times':'مواقيت الصلاة'
   };

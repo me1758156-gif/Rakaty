@@ -371,5 +371,4 @@ html[dir="rtl"] .switch-row input:checked + .switch::after{ transform:translateX
 .lock-msg{ margin-top:22px; min-height:20px; font-size:15px; font-weight:700; letter-spacing:.06em; color:transparent; }
 .lock-msg.on{ color:#a8473d; }
 .lock-hint{ position:absolute; left:0; right:0; text-align:center; bottom:calc(env(safe-area-inset-bottom,0px) + 62px); font-size:13px; color:#4d4d4d; }
-.lock-bar{ position:absolute; left:25%; right:25%; bottom:calc(env(safe-area-inset-bottom,0px) + 42px); height:3px; background:#161616; border-radius:3px; overflow:hidden; }
-.lock-bar i{ display:block; height:100%; width:0; background:#7a7a7a; }
+.lock-hint.flash{ color:#9a9a9a; }
