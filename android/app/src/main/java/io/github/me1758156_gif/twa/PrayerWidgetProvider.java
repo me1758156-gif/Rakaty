@@ -107,7 +107,7 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
                 day.get(Calendar.DAY_OF_MONTH), loc[0], loc[1]);
     }
 
-    /** Today's times, which prayer's time it is right now, and when to refresh next. */
+    /** The times to show, which prayer's time it is right now, and when to refresh next. */
     private static final class State { long[] times; int cur; long nextAt; }
 
     private static State state(Context c) {
@@ -126,15 +126,47 @@ public class PrayerWidgetProvider extends AppWidgetProvider {
         for (int i = 0; i < 6; i++) {
             if (t[i] > now) { next = t[i]; break; }
         }
+        // After today's Isha, show TOMORROW's times (in whatever the clock will say then). On the night the
+        // clocks change this means the new clock times appear straight away, not an hour later.
+        if (t[PrayerTimes.ISHA] <= now) {
+            Calendar tom = Calendar.getInstance();
+            tom.add(Calendar.DAY_OF_MONTH, 1);
+            long[] t2 = timesForDay(tom, loc);
+            s.times = t2;
+            s.cur = PrayerTimes.ISHA;
+            next = t2[0];
+        }
         Calendar mid = Calendar.getInstance();
         mid.set(Calendar.HOUR_OF_DAY, 0);
         mid.set(Calendar.MINUTE, 0);
         mid.set(Calendar.SECOND, 0);
         mid.set(Calendar.MILLISECOND, 0);
         mid.add(Calendar.DAY_OF_MONTH, 1);
-        long midnight = mid.getTimeInMillis();
-        s.nextAt = (next == -1 || midnight < next) ? midnight : next;
+        long at = mid.getTimeInMillis();
+        if (next != -1 && next < at) at = next;
+        // Also refresh right when the phone's clock changes by an hour (summer / winter time), and at least hourly.
+        long dst = nextClockChange(now);
+        if (dst != -1 && dst < at) at = dst;
+        if (now + 3600000L < at) at = now + 3600000L;
+        s.nextAt = at;
         return s;
+    }
+
+    /** When the phone's UTC offset next changes within the coming 2 days (Egypt's clock change), or -1. */
+    private static long nextClockChange(long now) {
+        java.util.TimeZone tz = java.util.TimeZone.getDefault();
+        int off = tz.getOffset(now);
+        for (long x = now + 900000L; x <= now + 48L * 3600000L; x += 900000L) {
+            if (tz.getOffset(x) != off) {
+                long lo = x - 900000L, hi = x;           // narrow it down to the exact second
+                while (hi - lo > 1000L) {
+                    long mid = (lo + hi) / 2;
+                    if (tz.getOffset(mid) != off) hi = mid; else lo = mid;
+                }
+                return hi;
+            }
+        }
+        return -1;
     }
 
     private static RemoteViews build(Context c) {
