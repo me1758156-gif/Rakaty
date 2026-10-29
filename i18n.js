@@ -48,6 +48,7 @@
     'Could not request compass access on this device.':'تعذّر طلب الوصول إلى البوصلة على هذا الجهاز.',
     "No compass data received · check that this site has motion/orientation access in your browser's site settings, or that your device has a compass sensor.":'لم تصل بيانات من البوصلة · تأكد من إذن الحركة والاتجاه لهذا الموقع في إعدادات المتصفح، أو من وجود حساس بوصلة في جهازك.',
     'Next prayer':'الصلاة القادمة',
+    'tomorrow':'غداً',
     'Alexandria':'الإسكندرية','Your location':'موقعك',
     'Fajr':'الفجر','Sunrise':'الشروق','Dhuhr':'الظهر','Asr':'العصر','Maghrib':'المغرب','Isha':'العشاء','Custom':'مخصص',
     '📍 Use my location':'📍 استخدم موقعي',

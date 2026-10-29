@@ -27,7 +27,7 @@
   .back:hover{ color:var(--text); }
   .pn-list{ cursor:default; }
 </style>
-<link rel="stylesheet" href="./glass.css?v=57">
+<link rel="stylesheet" href="./glass.css?v=58">
 </head>
 <body>
 <div class="wrap">
@@ -98,13 +98,20 @@
     var seq=buildSeq(), seqDay=new Date().getDate();
     function nameOf(k){ for(var i=0;i<NAMES.length;i++) if(NAMES[i][0]===k) return NAMES[i]; }
 
+    // The list shows the day of the NEXT prayer: after Isha it already shows tomorrow's times, so on the night
+    // the clocks change you see the new clock times straight away instead of waiting for the date to roll over.
+    function dayKey(dt){ return dt.getFullYear()+'-'+dt.getMonth()+'-'+dt.getDate(); }
+    var rowsKey='';
     function renderRows(){
-      var t=daySet(0), now=new Date(), nextK=null;
-      for(var i=0;i<seq.length;i++) if(seq[i].t>now){ nextK=seq[i].k; break; }
+      var now=new Date(), nextK=null, nextT=null;
+      for(var i=0;i<seq.length;i++) if(seq[i].t>now){ nextK=seq[i].k; nextT=seq[i].t; break; }
+      var base=nextT||now;
+      var t=timesFor(base.getFullYear(),base.getMonth()+1,base.getDate(),loc.lat,loc.lng);
       el('pnRows').innerHTML=NAMES.map(function(n){
         return '<div class="pn-row'+(n[0]===nextK?' next':'')+'"><span>'+n[1]+' <span class="pn-ar">'+n[2]+'</span></span><span class="pn-t">'+fmt(t[n[0]])+'</span></div>';
       }).join('');
-      el('pnWhere').textContent=loc.label+(loc.isDefault?' (default)':'');
+      el('pnWhere').textContent=loc.label+(loc.isDefault?' (default)':'')+(dayKey(base)!==dayKey(now)?' · tomorrow':'');
+      rowsKey=dayKey(base)+'|'+(nextK||'');
     }
 
     function tick(){
@@ -113,6 +120,7 @@
       var nxt=null, prev=null;
       for(var i=0;i<seq.length;i++){ if(seq[i].t>now){ nxt=seq[i]; prev=seq[i-1]; break; } }
       if(!nxt){ seq=buildSeq(); return; }
+      if(rowsKey!==dayKey(nxt.t)+'|'+nxt.k) renderRows();
       var ms=nxt.t-now, s=Math.floor(ms/1000), h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
       var nm=nameOf(nxt.k);
       el('pnName').textContent=nm[1]; el('pnAr').textContent=nm[2];
@@ -144,6 +152,6 @@
   })();
 </script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});});}</script>
-<script src="./i18n.js?v=57"></script>
+<script src="./i18n.js?v=58"></script>
 </body>
 </html>
