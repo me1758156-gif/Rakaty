@@ -581,7 +581,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="./glass.css?v=61">
+<link rel="stylesheet" href="./glass.css?v=62">
 </head>
 <body>
 <div class="app">
@@ -596,7 +596,7 @@
 
   <div class="theme-panel" id="themePanel" style="display:none;">
     <div class="theme-title">Settings</div>
-    <button class="btn-secondary guide-open" id="adhkarBtn2" type="button" style="margin-bottom:14px;">📿 Adhkar</button>
+    <button class="btn-secondary guide-open" id="adhkarBtn2" type="button" style="margin-bottom:14px;">📿 Athkar</button>
     <div class="set-label">Colour</div>
     <div class="theme-row">
       <button class="theme-swatch" data-theme="blue" type="button"><i style="background:linear-gradient(135deg,#4DA3FF,#2465E0)"></i>Blue</button>
@@ -657,12 +657,12 @@
   <div class="step active" id="stepPrayer">
     <div class="step-label">Step 1 · Choose your prayer</div>
     <div class="selector" id="prayerSelector"></div>
-    <button class="adhkar-entry" id="adhkarBtn" type="button"><span>📿 Adhkar</span><small>الأذكار</small></button>
+    <button class="adhkar-entry" id="adhkarBtn" type="button"><span>📿 Athkar</span><small>الأذكار</small></button>
   </div>
 
-  <div class="step" id="stepAdhkar">
+  <div class="step" id="stepAthkar">
     <button class="back-link" id="adhkarBack" type="button">← Prayers</button>
-    <div class="step-label">Adhkar</div>
+    <div class="step-label">Athkar</div>
     <div class="adhkar-list" id="adhkarList"></div>
     <button class="btn-secondary adhkar-add" id="adhkarAddBtn" type="button">＋ Add your own</button>
     <div class="adhkar-form" id="adhkarForm" style="display:none;">
@@ -674,7 +674,7 @@
   </div>
 
   <div class="step" id="stepDhikr">
-    <button class="back-link" id="dhikrBack" type="button">← Adhkar</button>
+    <button class="back-link" id="dhikrBack" type="button">← Athkar</button>
     <div class="dhikr-ar" id="dhikrAr"></div>
     <div class="dhikr-en" id="dhikrEn"></div>
     <div class="dhikr-tap" id="dhikrTap" role="button" tabindex="0">
@@ -855,7 +855,7 @@
     prayer: document.getElementById('stepPrayer'),
     mode: document.getElementById('stepMode'),
     track: document.getElementById('stepTrack'),
-    adhkar: document.getElementById('stepAdhkar'),
+    adhkar: document.getElementById('stepAthkar'),
     dhikr: document.getElementById('stepDhikr'),
   };
   const modeLabels = {sujud:'Camera mode', motion:'Motion mode'};
@@ -1202,7 +1202,7 @@
     };
   });
 
-  // ---- Adhkar (remembrance counters) ----
+  // ---- Athkar (remembrance counters) ----
   (function(){
     const BUILT_IN = [
       {id:'adad',  ar:'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ، وَزِنَةَ عَرْشِهِ، وَمِدَادَ كَلِمَاتِهِ', en:'Glory and praise be to Allah, as many as His creation, as pleased as He is, as heavy as His Throne, and as much as the ink of His words.', target:3},
@@ -2506,6 +2506,6 @@
   })();
 </script>
 <script>if(window.rakahQuick) window.rakahQuick();</script>
-<script src="./i18n.js?v=61"></script>
+<script src="./i18n.js?v=62"></script>
 </body>
 </html>
