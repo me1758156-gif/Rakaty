@@ -435,3 +435,14 @@ body[data-step="adhkar"] .prayer-next, body[data-step="dhikr"] .prayer-next{ dis
 .dhikr-title{ justify-content:center; margin:6px 0 0; }
 .dhikr-title .ttl-en{ margin-inline-start:8px; }
 html[lang="ar"] .ttl-en{ display:none; }
+
+/* Athkar button: its own place, under Settings (same style as Settings / Qibla) */
+#adhkarBtn{
+  position:fixed; top:calc(env(safe-area-inset-top,0px) + 54px); left:12px; z-index:60;
+  padding:7px 12px; font-size:12px; border-radius:999px; flex:none; width:auto;
+  background:rgba(var(--panel-solid-rgb),0.45);
+}
+.theme-panel{ top:calc(env(safe-area-inset-top,0px) + 98px); }
+
+/* make room for the Athkar button so it never touches the title */
+header h1{ margin-top:34px; }

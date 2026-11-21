@@ -581,7 +581,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="./glass.css?v=63">
+<link rel="stylesheet" href="./glass.css?v=65">
 </head>
 <body>
 <div class="app">
@@ -590,13 +590,13 @@
     <h1>Rakah Tracker<span class="ar">متتبع الركعات</span></h1>
     <div class="toprow">
       <button class="btn-secondary small" id="themeBtn" type="button">⚙️ Settings</button>
+      <button class="btn-secondary small" id="adhkarBtn" type="button">📿 Athkar</button>
       <button class="btn-secondary small" id="qiblaToggleBtn" type="button">🧭 Qibla</button>
     </div>
   </header>
 
   <div class="theme-panel" id="themePanel" style="display:none;">
     <div class="theme-title">Settings</div>
-    <button class="btn-secondary guide-open" id="adhkarBtn2" type="button" style="margin-bottom:14px;">📿 Athkar</button>
     <div class="set-label">Colour</div>
     <div class="theme-row">
       <button class="theme-swatch" data-theme="blue" type="button"><i style="background:linear-gradient(135deg,#4DA3FF,#2465E0)"></i>Blue</button>
@@ -657,7 +657,6 @@
   <div class="step active" id="stepPrayer">
     <div class="step-label">Step 1 · Choose your prayer</div>
     <div class="selector" id="prayerSelector"></div>
-    <button class="adhkar-entry" id="adhkarBtn" type="button"><span>📿 Athkar</span><small>الأذكار</small></button>
   </div>
 
   <div class="step" id="stepAthkar">
@@ -1299,7 +1298,6 @@
     });
     document.getElementById('dhikrBack').addEventListener('click', ()=>{ renderList(); goToStep('adhkar'); });
     document.getElementById('adhkarBtn').addEventListener('click', ()=>{ renderList(); goToStep('adhkar'); });
-    document.getElementById('adhkarBtn2').addEventListener('click', ()=>{ document.getElementById('themePanel').style.display = 'none'; renderList(); goToStep('adhkar'); });
     document.getElementById('adhkarBack').addEventListener('click', ()=> goToStep('prayer'));
     const form = document.getElementById('adhkarForm'), addBtn = document.getElementById('adhkarAddBtn');
     addBtn.addEventListener('click', ()=>{ form.style.display = 'block'; addBtn.style.display = 'none'; document.getElementById('adhkarText').focus(); });
@@ -2517,6 +2515,6 @@
   })();
 </script>
 <script>if(window.rakahQuick) window.rakahQuick();</script>
-<script src="./i18n.js?v=63"></script>
+<script src="./i18n.js?v=65"></script>
 </body>
 </html>
