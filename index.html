@@ -581,7 +581,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="./glass.css?v=62">
+<link rel="stylesheet" href="./glass.css?v=63">
 </head>
 <body>
 <div class="app">
@@ -675,6 +675,7 @@
 
   <div class="step" id="stepDhikr">
     <button class="back-link" id="dhikrBack" type="button">← Athkar</button>
+    <div class="dhikr-title" id="dhikrTitle"></div>
     <div class="dhikr-ar" id="dhikrAr"></div>
     <div class="dhikr-en" id="dhikrEn"></div>
     <div class="dhikr-tap" id="dhikrTap" role="button" tabindex="0">
@@ -1205,20 +1206,20 @@
   // ---- Athkar (remembrance counters) ----
   (function(){
     const BUILT_IN = [
-      {id:'adad',  ar:'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ، وَزِنَةَ عَرْشِهِ، وَمِدَادَ كَلِمَاتِهِ', en:'Glory and praise be to Allah, as many as His creation, as pleased as He is, as heavy as His Throne, and as much as the ink of His words.', target:3},
-      {id:'t100',  ar:'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ', en:'Glory and praise be to Allah.', target:100},
-      {id:'sub33', ar:'سُبْحَانَ اللَّهِ', en:'Glory be to Allah. (After prayer: 33)', target:33},
-      {id:'ham33', ar:'الْحَمْدُ لِلَّهِ', en:'All praise is for Allah. (After prayer: 33)', target:33},
-      {id:'akb34', ar:'اللَّهُ أَكْبَرُ', en:'Allah is the Greatest. (After prayer: 34)', target:34},
-      {id:'ist3',  ar:'أَسْتَغْفِرُ اللَّهَ', en:'I seek forgiveness from Allah. (After prayer: 3)', target:3},
-      {id:'ist100',ar:'أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ', en:'I seek forgiveness from Allah and turn back to Him.', target:100},
-      {id:'tahlil',ar:'لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ', en:'There is no god but Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.', target:10},
-      {id:'hawq',  ar:'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ', en:'There is no power and no strength except with Allah.', target:0},
-      {id:'salawat',ar:'اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ', en:'O Allah, send prayers and peace upon our Prophet Muhammad.', target:10},
-      {id:'azim',  ar:'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ', en:'Glory and praise be to Allah, Glory be to Allah the Magnificent.', target:0},
-      {id:'laila', ar:'لَا إِلَهَ إِلَّا اللَّهُ', en:'There is no god but Allah.', target:0},
-      {id:'majlis',ar:'سُبْحَانَكَ اللَّهُمَّ وَبِحَمْدِكَ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ، أَسْتَغْفِرُكَ وَأَتُوبُ إِلَيْكَ', en:'Glory and praise be to You, O Allah. I bear witness that there is no god but You. I seek Your forgiveness and turn to You in repentance. (Said at the end of a gathering)', target:1},
-      {id:'safar', ar:'اللَّهُ أَكْبَرُ، اللَّهُ أَكْبَرُ، اللَّهُ أَكْبَرُ، سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ، وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ، اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى، وَمِنَ الْعَمَلِ مَا تَرْضَى، اللَّهُمَّ هَوِّنْ عَلَيْنَا سَفَرَنَا هَذَا وَاطْوِ عَنَّا بُعْدَهُ، اللَّهُمَّ أَنْتَ الصَّاحِبُ فِي السَّفَرِ، وَالْخَلِيفَةُ فِي الْأَهْلِ، اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنْ وَعْثَاءِ السَّفَرِ، وَكَآبَةِ الْمَنْظَرِ، وَسُوءِ الْمُنْقَلَبِ فِي الْمَالِ وَالْأَهْلِ', en:"Allah is the Greatest (x3). Glory to Him who has subjected this to us, and we could not have done it ourselves; and to our Lord we will surely return. O Allah, we ask You on this journey for goodness and piety, and for deeds that please You. O Allah, make this journey easy for us and shorten its distance. O Allah, You are the Companion on the journey and the Guardian of the family. O Allah, I seek refuge in You from the hardships of travel, from a sorrowful sight, and from an evil return in wealth and family. (Travel dua)", target:1}
+      {id:'adad',  t:'التسبيح بعدد الخلق', te:'Tasbih (3 times)', ar:'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ، وَزِنَةَ عَرْشِهِ، وَمِدَادَ كَلِمَاتِهِ', en:'Glory and praise be to Allah, as many as His creation, as pleased as He is, as heavy as His Throne, and as much as the ink of His words.', target:3},
+      {id:'t100',  t:'التسبيح مائة مرة', te:'Tasbih (100 times)', ar:'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ', en:'Glory and praise be to Allah.', target:100},
+      {id:'sub33', t:'تسبيح بعد الصلاة', te:'Tasbih after prayer', ar:'سُبْحَانَ اللَّهِ', en:'Glory be to Allah. (After prayer: 33)', target:33},
+      {id:'ham33', t:'تحميد بعد الصلاة', te:'Tahmid after prayer', ar:'الْحَمْدُ لِلَّهِ', en:'All praise is for Allah. (After prayer: 33)', target:33},
+      {id:'akb34', t:'تكبير بعد الصلاة', te:'Takbir after prayer', ar:'اللَّهُ أَكْبَرُ', en:'Allah is the Greatest. (After prayer: 34)', target:34},
+      {id:'ist3',  t:'الاستغفار بعد الصلاة', te:'Istighfar after prayer', ar:'أَسْتَغْفِرُ اللَّهَ', en:'I seek forgiveness from Allah. (After prayer: 3)', target:3},
+      {id:'ist100',t:'الاستغفار', te:'Istighfar', ar:'أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ', en:'I seek forgiveness from Allah and turn back to Him.', target:100},
+      {id:'tahlil',t:'التهليل', te:'Tahlil', ar:'لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ', en:'There is no god but Allah alone, with no partner. His is the dominion and His is the praise, and He has power over all things.', target:10},
+      {id:'hawq',  t:'الحوقلة', te:'Hawqala', ar:'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ', en:'There is no power and no strength except with Allah.', target:0},
+      {id:'salawat',t:'الصلاة على النبي ﷺ', te:'Salawat on the Prophet ﷺ', ar:'اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ', en:'O Allah, send prayers and peace upon our Prophet Muhammad.', target:10},
+      {id:'azim',  t:'التسبيح والتعظيم', te:'Tasbih and Tazim', ar:'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ', en:'Glory and praise be to Allah, Glory be to Allah the Magnificent.', target:0},
+      {id:'laila', t:'كلمة التوحيد', te:'Kalimat at-Tawhid', ar:'لَا إِلَهَ إِلَّا اللَّهُ', en:'There is no god but Allah.', target:0},
+      {id:'majlis',t:'كفارة المجلس', te:'Kaffarat al-Majlis', ar:'سُبْحَانَكَ اللَّهُمَّ وَبِحَمْدِكَ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ، أَسْتَغْفِرُكَ وَأَتُوبُ إِلَيْكَ', en:'Glory and praise be to You, O Allah. I bear witness that there is no god but You. I seek Your forgiveness and turn to You in repentance. (Said at the end of a gathering)', target:1},
+      {id:'safar', t:'دعاء السفر', te:'Travel Dua', ar:'اللَّهُ أَكْبَرُ، اللَّهُ أَكْبَرُ، اللَّهُ أَكْبَرُ، سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ، وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ، اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى، وَمِنَ الْعَمَلِ مَا تَرْضَى، اللَّهُمَّ هَوِّنْ عَلَيْنَا سَفَرَنَا هَذَا وَاطْوِ عَنَّا بُعْدَهُ، اللَّهُمَّ أَنْتَ الصَّاحِبُ فِي السَّفَرِ، وَالْخَلِيفَةُ فِي الْأَهْلِ، اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنْ وَعْثَاءِ السَّفَرِ، وَكَآبَةِ الْمَنْظَرِ، وَسُوءِ الْمُنْقَلَبِ فِي الْمَالِ وَالْأَهْلِ', en:"Allah is the Greatest (x3). Glory to Him who has subjected this to us, and we could not have done it ourselves; and to our Lord we will surely return. O Allah, we ask You on this journey for goodness and piety, and for deeds that please You. O Allah, make this journey easy for us and shorten its distance. O Allah, You are the Companion on the journey and the Guardian of the family. O Allah, I seek refuge in You from the hardships of travel, from a sorrowful sight, and from an evil return in wealth and family. (Travel dua)", target:1}
     ];
     const KEY = 'rakah-adhkar';
     const today = ()=>{ const d = new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
@@ -1239,6 +1240,12 @@
         const card = document.createElement('button');
         card.type = 'button'; card.className = 'adhkar-card' + (done ? ' done' : '');
         const ar = document.createElement('div'); ar.className = 'adhkar-card-ar'; ar.textContent = d.ar;
+        if(d.t){
+          const ttl = document.createElement('div'); ttl.className = 'adhkar-card-title';
+          const a = document.createElement('span'); a.textContent = d.t; ttl.appendChild(a);
+          const e = document.createElement('span'); e.className = 'ttl-en'; e.textContent = d.te; ttl.appendChild(e);
+          card.appendChild(ttl);
+        }
         const meta = document.createElement('div'); meta.className = 'adhkar-card-meta';
         const cnt = document.createElement('span'); cnt.setAttribute('data-notr',''); cnt.textContent = (done ? '✓ ' : '') + n + (d.target > 0 ? ' / ' + d.target : '');
         meta.appendChild(cnt);
@@ -1264,6 +1271,10 @@
     function openDhikr(id){
       current = id;
       const d = all().find(x=> x.id === id);
+      const tt = document.getElementById('dhikrTitle'); tt.innerHTML = '';
+      if(d.t){ const a = document.createElement('span'); a.textContent = d.t; tt.appendChild(a);
+               const e = document.createElement('span'); e.className = 'ttl-en'; e.textContent = d.te; tt.appendChild(e); }
+      tt.style.display = d.t ? '' : 'none';
       document.getElementById('dhikrAr').textContent = d.ar;
       const en = document.getElementById('dhikrEn'); en.textContent = d.en || ''; en.style.display = d.en ? '' : 'none';
       document.getElementById('dhikrDelete').style.display = d.custom ? '' : 'none';
@@ -2506,6 +2517,6 @@
   })();
 </script>
 <script>if(window.rakahQuick) window.rakahQuick();</script>
-<script src="./i18n.js?v=62"></script>
+<script src="./i18n.js?v=63"></script>
 </body>
 </html>
